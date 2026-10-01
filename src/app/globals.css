@@ -2,12 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --gpa-green: #0B6E4F;
-  --gpa-navy: #1A2B4A;
-  --gpa-gold: #D4A017;
-}
-
 html,
 body {
   padding: 0;
