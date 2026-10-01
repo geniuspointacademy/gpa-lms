@@ -4,7 +4,7 @@ export default function ProfilePage() {
       <h1 className="text-3xl font-bold text-gpa-navy mb-6">Profile</h1>
       <div className="bg-white p-6 rounded-lg border">
         <p className="text-gray-600">
-          Your account details and level access will appear here
+          Your account details and level access will appear here.
         </p>
       </div>
     </div>
