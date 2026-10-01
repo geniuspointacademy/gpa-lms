@@ -18,31 +18,33 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen flex flex-col">
         <header className="bg-gpa-navy text-white">
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-            <Link href="/" className="flex items-center gap-3 shrink-0">
+          <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
+            <Link href="/" className="flex items-center gap-2 shrink-0">
               <Image
                 src="/logo.png"
                 alt="Genius Point Academy"
-                width={44}
-                height={44}
+                width={40}
+                height={40}
                 priority
                 className="rounded"
               />
-              <span className="font-bold text-base sm:text-lg whitespace-nowrap">
-                Genius Point Academy
+              <span className="font-bold text-sm leading-tight">
+                Genius Point
+                <br />
+                Academy
               </span>
             </Link>
 
-            <nav className="flex gap-4 sm:gap-6 text-sm items-center">
+            <nav className="flex gap-3 sm:gap-6 text-sm items-center shrink-0">
               <Link
                 href="/courses"
-                className="hover:text-gpa-gold transition-colors"
+                className="hover:text-gpa-gold transition-colors whitespace-nowrap"
               >
                 Courses
               </Link>
               <Link
                 href="/login"
-                className="bg-gpa-green hover:bg-gpa-green/90 px-4 py-2 rounded font-medium transition-colors"
+                className="bg-gpa-green hover:bg-gpa-green/90 px-3 sm:px-4 py-2 rounded font-medium transition-colors whitespace-nowrap"
               >
                 Sign In
               </Link>
