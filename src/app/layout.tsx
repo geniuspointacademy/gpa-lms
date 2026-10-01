@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import SignOutButton from '@/components/SignOutButton'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -38,16 +39,14 @@ export default async function RootLayout({
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  let fullName: string | null = null
-  let role: string = 'student'
+  let role = 'student'
 
   if (user) {
     const { data } = await supabase
       .from('users')
-      .select('full_name, role')
+      .select('role')
       .eq('id', user.id)
       .single()
-    fullName = data?.full_name ?? null
     role = data?.role ?? 'student'
   }
 
@@ -96,14 +95,7 @@ export default async function RootLayout({
                       Admin
                     </Link>
                   )}
-                  <form action="/auth/signout" method="post">
-                    <button
-                      type="submit"
-                      className="bg-gpa-green hover:bg-gpa-green/90 px-3 sm:px-4 py-2 rounded font-medium transition-colors whitespace-nowrap"
-                    >
-                      Sign Out
-                    </button>
-                  </form>
+                  <SignOutButton />
                 </>
               ) : (
                 <>
