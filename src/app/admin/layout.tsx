@@ -32,6 +32,12 @@ export default async function AdminLayout({
         >
           Courses
         </Link>
+        <Link
+          href="/admin/codes"
+          className="px-4 py-2 text-sm font-medium hover:bg-gray-100 rounded-t whitespace-nowrap"
+        >
+          Codes
+        </Link>
       </nav>
 
       {children}
