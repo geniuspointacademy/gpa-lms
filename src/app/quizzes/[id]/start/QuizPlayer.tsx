@@ -1,6 +1,6 @@
 'use client'
 
-impot { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import QuestionCard from './QuestionCard'
 
