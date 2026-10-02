@@ -38,18 +38,16 @@ async function verifyAdmin() {
   return { ok: true }
 }
 
-export async function POST(req: Request) {
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
   const check = await verifyAdmin()
   if ('error' in check) {
     return NextResponse.json({ error: check.error }, { status: check.status })
   }
 
   const body = await req.json()
-  const { course_id, title, topic_description, time_limit_seconds, max_attempts } = body
-
-  if (!course_id || !title) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-  }
 
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -59,14 +57,8 @@ export async function POST(req: Request) {
 
   const { data, error } = await adminClient
     .from('quizzes')
-    .insert({
-      course_id,
-      title: title.trim(),
-      topic_description: topic_description?.trim() || null,
-      time_limit_seconds: time_limit_seconds || null,
-      max_attempts: max_attempts || 1,
-      is_published: false,
-    })
+    .update(body)
+    .eq('id', params.id)
     .select()
     .single()
 
@@ -75,4 +67,31 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ quiz: data })
+}
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const check = await verifyAdmin()
+  if ('error' in check) {
+    return NextResponse.json({ error: check.error }, { status: check.status })
+  }
+
+  const adminClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  )
+
+  const { error } = await adminClient
+    .from('quizzes')
+    .delete()
+    .eq('id', params.id)
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
 }
