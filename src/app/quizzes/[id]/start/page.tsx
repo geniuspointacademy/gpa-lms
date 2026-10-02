@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import QuizPlayer from './QuizPlayer'
 
-export const dynamic = 'force-dynamic'
+export cons dynamic = 'force-dynamic'
 
 export default async function StartQuizPage({
   params,
