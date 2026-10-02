@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
-  // 1. Verify the caller is an admin (using their session)
+  // 1. Verify caller is admin using their session
   const cookieStore = cookies()
   const userClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // 2. Parse and validate the request body
+  // 2. Parse and validate
   const body = await req.json()
   const { title, description, level, price, currency } = body
 
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid level' }, { status: 400 })
   }
 
-  // 3. Use the service role client to insert (bypasses RLS)
+  // 3. Insert with service role (bypasses RLS)
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
