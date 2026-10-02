@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import CourseForm from './CourseForm'
@@ -47,9 +48,10 @@ export default async function AdminCoursesPage() {
         ) : (
           <div className="space-y-3">
             {courses.map((course) => (
-              <div
+              <Link
                 key={course.id}
-                className="bg-white p-4 rounded-lg border flex items-center justify-between gap-4"
+                href={`/admin/courses/${course.id}`}
+                className="block bg-white p-4 rounded-lg border flex items-center justify-between gap-4 hover:bg-gray-50 hover:border-gpa-green transition-colors"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -72,7 +74,7 @@ export default async function AdminCoursesPage() {
                 <div className="text-right text-sm text-gray-600 shrink-0">
                   ₦{Number(course.price).toLocaleString()}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
