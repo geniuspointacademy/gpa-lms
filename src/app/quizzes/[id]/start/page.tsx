@@ -54,16 +54,20 @@ export default async function StartQuizPage({
   }
 
   const { data: access } = await adminClient
-    .from('user_course_access')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('course_id', quiz.course_id)
-    .maybeSingle()
+  .from('user_course_access')
+  .select('id')
+  .eq('user_id', user.id)
+  .eq('course_id', quiz.course_id)
+  .maybeSingle()
 
-  if (!access) {
-    redirect(`/courses/${quiz.course_id}`)
-  }
-
+if (!access) {
+  // TEMP: Log for debugging — remove after
+  console.log('ACCESS CHECK FAILED', {
+    user_id: user.id,
+    course_id: quiz.course_id,
+  })
+  redirect(`/courses/${quiz.course_id}`)
+}
   const { count: attemptCount } = await adminClient
     .from('quiz_attempts')
     .select('*', { count: 'exact', head: true })
