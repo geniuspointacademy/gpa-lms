@@ -1,8 +1,10 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import QuizPlayer from './QuizPlayer'
+import WhatsAppButton from '@/components/WhatsAppButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,9 +54,22 @@ export default async function StartQuizPage({
 
   if (!quiz) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-red-600 font-bold mb-2">Quiz not found or not published</p>
-        <p className="text-sm text-gray-600">Quiz ID: {params.id}</p>
+      <div className="max-w-md mx-auto px-4 py-16">
+        <div className="bg-white p-8 rounded-lg border text-center">
+          <div className="text-5xl mb-4">🔍</div>
+          <h1 className="text-xl font-bold text-gpa-navy mb-2">
+            Quiz Not Found
+          </h1>
+          <p className="text-gray-600 mb-6 text-sm">
+            This quiz doesn&apos;t exist or hasn&apos;t been published yet.
+          </p>
+          <Link
+            href="/courses"
+            className="inline-block px-5 py-2 rounded font-medium bg-gpa-navy text-white hover:opacity-90"
+          >
+            Browse Courses
+          </Link>
+        </div>
       </div>
     )
   }
@@ -80,23 +95,84 @@ export default async function StartQuizPage({
 
   const attemptsUsed = attemptCount ?? 0
 
-  // Check max attempts
+  // Check max attempts — show message instead of redirect
   if (attemptsUsed >= quiz.max_attempts) {
-    redirect(`/quizzes/${params.id}/results`)
+    return (
+      <div className="max-w-md mx-auto px-4 py-16">
+        <div className="bg-white p-8 rounded-lg border text-center">
+          <div className="text-5xl mb-4">🔒</div>
+          <h1 className="text-2xl font-bold text-gpa-navy mb-2">
+            Attempts Exhausted
+          </h1>
+          <p className="text-gray-600 mb-4">
+            You have used all{' '}
+            <strong>
+              {quiz.max_attempts}{' '}
+              {quiz.max_attempts === 1 ? 'attempt' : 'attempts'}
+            </strong>{' '}
+            for this quiz.
+          </p>
+          <p className="text-sm text-gray-500 mb-6">
+            Quiz: <strong>{quiz.title}</strong>
+          </p>
+
+          <div className="flex gap-3 justify-center flex-wrap mb-6">
+            <Link
+              href={`/quizzes/${params.id}/results`}
+              className="px-5 py-2 rounded font-medium bg-gpa-navy text-white hover:opacity-90"
+            >
+              View Your Results
+            </Link>
+            <Link
+              href={`/courses/${quiz.course_id}/learn`}
+              className="px-5 py-2 rounded font-medium border hover:bg-gray-50"
+            >
+              Back to Course
+            </Link>
+          </div>
+
+          <div className="pt-6 border-t">
+            <p className="text-sm text-gray-600 mb-3">
+              Need another attempt? Contact the admin.
+            </p>
+            <WhatsAppButton
+              courseTitle={quiz.title}
+              studentName={null}
+              level={null}
+            />
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // Get questions
   const { data: questions } = await adminClient
     .from('questions')
-    .select('id, text, options, image_url, question_type, order_index, points, hint, topic_tag')
+    .select(
+      'id, text, options, image_url, question_type, order_index, points, hint, topic_tag'
+    )
     .eq('quiz_id', params.id)
     .order('order_index', { ascending: true })
 
   if (!questions || questions.length === 0) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-red-600 font-bold mb-2">No questions in this quiz</p>
-        <p className="text-sm text-gray-600">Quiz: {quiz.title}</p>
+      <div className="max-w-md mx-auto px-4 py-16">
+        <div className="bg-white p-8 rounded-lg border text-center">
+          <div className="text-5xl mb-4">📝</div>
+          <h1 className="text-xl font-bold text-gpa-navy mb-2">
+            No Questions Yet
+          </h1>
+          <p className="text-gray-600 mb-6 text-sm">
+            This quiz doesn&apos;t have any questions yet. Check back soon.
+          </p>
+          <Link
+            href={`/courses/${quiz.course_id}/learn`}
+            className="inline-block px-5 py-2 rounded font-medium bg-gpa-navy text-white hover:opacity-90"
+          >
+            Back to Course
+          </Link>
+        </div>
       </div>
     )
   }
@@ -116,13 +192,22 @@ export default async function StartQuizPage({
 
   if (attemptError || !attempt) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-red-600 font-bold mb-2">
-          Could not start quiz attempt
-        </p>
-        <p className="text-sm text-gray-600 mt-2">
-          {attemptError?.message || 'Unknown error'}
-        </p>
+      <div className="max-w-md mx-auto px-4 py-16">
+        <div className="bg-white p-8 rounded-lg border text-center">
+          <div className="text-5xl mb-4">⚠️</div>
+          <h1 className="text-xl font-bold text-red-600 mb-2">
+            Could Not Start Quiz
+          </h1>
+          <p className="text-gray-600 text-sm mb-4">
+            {attemptError?.message || 'Unknown error'}
+          </p>
+          <Link
+            href={`/courses/${quiz.course_id}/learn`}
+            className="inline-block px-5 py-2 rounded font-medium bg-gpa-navy text-white hover:opacity-90"
+          >
+            Back to Course
+          </Link>
+        </div>
       </div>
     )
   }
