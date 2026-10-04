@@ -1,4 +1,5 @@
-import { createServerClient } from '@supabase/ssr'
+import { logAdminAction } from '@/lib/audit'
+  import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
@@ -75,6 +76,16 @@ export async function POST(req: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-
+  
+// Log the action
+  await logAdminAction({
+    adminId: user.id,
+    action: 'course.create',
+    targetType: 'course',
+    targetId: data.id,
+    targetLabel: data.title,
+    details: { level: data.level, price: data.price },
+  })
+  
   return NextResponse.json({ course: data })
 }
