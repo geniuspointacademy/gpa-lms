@@ -32,10 +32,7 @@ export default async function StartQuizPage({
   )
 
   const { data: { user } } = await userClient.auth.getUser()
-  console.log('[START] user:', user?.id, user?.email)
-
   if (!user) {
-    console.log('[START] redirect: no user, going to /login')
     redirect('/login')
   }
 
@@ -45,102 +42,58 @@ export default async function StartQuizPage({
     { auth: { persistSession: false } }
   )
 
+  // Fetch the quiz WITHOUT the published filter (temporary)
   const { data: quiz } = await adminClient
     .from('quizzes')
     .select('*, courses ( id, title )')
     .eq('id', params.id)
-    .eq('is_published', true)
     .single()
 
-  console.log('[START] quiz lookup:', {
-    params_id: params.id,
-    quiz_found: !!quiz,
-    quiz_published: quiz?.is_published,
-    quiz_course_id: quiz?.course_id,
-  })
-
   if (!quiz) {
-    console.log('[START] redirect: quiz not found, going to /courses')
-    redirect('/courses')
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <p className="text-red-600">Quiz not found. ID: {params.id}</p>
+      </div>
+    )
   }
 
-  const { data: access } = await adminClient
-    .from('user_course_access')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('course_id', quiz.course_id)
-    .maybeSingle()
-
-  console.log('[START] access check:', {
-    user_id: user.id,
-    quiz_course_id: quiz.course_id,
-    access_found: !!access,
-  })
-
-  if (!access) {
-    console.log('[START] redirect: no access, going back to course page')
-    redirect(`/courses/${quiz.course_id}`)
-  }
-
-  const { count: attemptCount } = await adminClient
-    .from('quiz_attempts')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('quiz_id', params.id)
-
-  const attemptsUsed = attemptCount ?? 0
-
-  console.log('[START] attempts:', {
-    attemptsUsed,
-    max_attempts: quiz.max_attempts,
-  })
-
-  if (attemptsUsed >= quiz.max_attempts) {
-    console.log('[START] redirect: max attempts reached, going to results')
-    redirect(`/quizzes/${params.id}/results`)
-  }
-
+  // Fetch questions
   const { data: questions } = await adminClient
     .from('questions')
     .select('id, text, options, image_url, question_type, order_index, points, hint, topic_tag')
     .eq('quiz_id', params.id)
     .order('order_index', { ascending: true })
 
-  console.log('[START] questions:', {
-    count: questions?.length ?? 0,
-  })
-
   if (!questions || questions.length === 0) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <p className="text-gray-600">This quiz has no questions yet.</p>
+        <p className="text-sm text-gray-500 mt-2">Quiz: {quiz.title}</p>
       </div>
     )
   }
 
+  // Create attempt (or reuse one)
   const { data: attempt, error: attemptError } = await adminClient
     .from('quiz_attempts')
     .insert({
       user_id: user.id,
       quiz_id: params.id,
-      attempt_number: attemptsUsed + 1,
+      attempt_number: 1,
       started_at: new Date().toISOString(),
       is_submitted: false,
     })
     .select()
     .single()
 
-  console.log('[START] attempt creation:', {
-    success: !!attempt,
-    error: attemptError?.message,
-  })
-
   if (attemptError || !attempt) {
-    console.log('[START] redirect: attempt creation failed')
-    redirect(`/courses/${quiz.course_id}`)
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <p className="text-red-600">Could not start attempt</p>
+        <p className="text-sm text-gray-500 mt-2">{attemptError?.message}</p>
+      </div>
+    )
   }
-
-  console.log('[START] rendering quiz player for attempt:', attempt.id)
 
   return (
     <QuizPlayer
