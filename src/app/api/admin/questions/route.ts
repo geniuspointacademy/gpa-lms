@@ -53,14 +53,23 @@ export async function POST(req: Request) {
     image_url,
     order_index,
     points,
+    hint,
+    topic_tag,
+    explanation,
   } = body
 
   if (!quiz_id || !text || !Array.isArray(options) || options.length < 2) {
-    return NextResponse.json({ error: 'Invalid question data' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Invalid question data' },
+      { status: 400 }
+    )
   }
 
   if (!Array.isArray(correct_answer) || correct_answer.length === 0) {
-    return NextResponse.json({ error: 'Correct answer required' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Correct answer required' },
+      { status: 400 }
+    )
   }
 
   const adminClient = createClient(
@@ -80,6 +89,8 @@ export async function POST(req: Request) {
       question_type: 'single_choice',
       order_index: order_index ?? 0,
       points: points ?? 1,
+      hint: hint || null,
+      topic_tag: topic_tag || null,
     })
     .select()
     .single()
@@ -88,12 +99,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: qError.message }, { status: 500 })
   }
 
-  // Insert the answer
+  // Insert the answer + explanation
   const { error: aError } = await adminClient
     .from('question_answers')
     .insert({
       question_id: question.id,
       correct_answer,
+      explanation: explanation || null,
     })
 
   if (aError) {
@@ -105,7 +117,10 @@ export async function POST(req: Request) {
   return NextResponse.json({
     question: {
       ...question,
-      question_answers: { correct_answer },
+      question_answers: {
+        correct_answer,
+        explanation: explanation || null,
+      },
     },
   })
 }
