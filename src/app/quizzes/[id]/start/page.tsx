@@ -42,7 +42,6 @@ export default async function StartQuizPage({
     { auth: { persistSession: false } }
   )
 
-  // Fetch the quiz WITHOUT the published filter (temporary)
   const { data: quiz } = await adminClient
     .from('quizzes')
     .select('*, courses ( id, title )')
@@ -52,12 +51,12 @@ export default async function StartQuizPage({
   if (!quiz) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-red-600">Quiz not found. ID: {params.id}</p>
+        <p className="text-red-600 font-bold mb-2">Quiz not found</p>
+        <p className="text-sm text-gray-600">Quiz ID: {params.id}</p>
       </div>
     )
   }
 
-  // Fetch questions
   const { data: questions } = await adminClient
     .from('questions')
     .select('id, text, options, image_url, question_type, order_index, points, hint, topic_tag')
@@ -67,13 +66,12 @@ export default async function StartQuizPage({
   if (!questions || questions.length === 0) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-gray-600">This quiz has no questions yet.</p>
-        <p className="text-sm text-gray-500 mt-2">Quiz: {quiz.title}</p>
+        <p className="text-red-600 font-bold mb-2">No questions in this quiz</p>
+        <p className="text-sm text-gray-600">Quiz: {quiz.title}</p>
       </div>
     )
   }
 
-  // Create attempt (or reuse one)
   const { data: attempt, error: attemptError } = await adminClient
     .from('quiz_attempts')
     .insert({
@@ -89,8 +87,12 @@ export default async function StartQuizPage({
   if (attemptError || !attempt) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-red-600">Could not start attempt</p>
-        <p className="text-sm text-gray-500 mt-2">{attemptError?.message}</p>
+        <p className="text-red-600 font-bold mb-2">
+          Could not start quiz attempt
+        </p>
+        <p className="text-sm text-gray-600 mt-2">
+          {attemptError?.message || 'Unknown error'}
+        </p>
       </div>
     )
   }
