@@ -118,15 +118,16 @@ export async function POST(req: Request) {
   }
 
   // 7. Update attempt
-  const { error: updateError } = await adminClient
-    .from('quiz_attempts')
-    .update({
-      is_submitted: true,
-      submitted_at: new Date().toISOString(),
-      score,
-      max_score: maxScore,
-    })
-    .eq('id', attempt_id)
+ const { error: updateError } = await adminClient
+  .from('quiz_attempts')
+  .update({
+    is_submitted: true,
+    submitted_at: new Date().toISOString(),
+    score,
+    max_score: maxScore,
+    answers,
+  })
+  .eq('id', attempt_id)
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
