@@ -116,11 +116,14 @@ export default async function LearnPage({
               const attemptsUsed = p?.attempt_count ?? 0
               const attemptsLeft = quiz.max_attempts - attemptsUsed
               const canAttempt = attemptsLeft > 0
+              const exhausted = attemptsLeft <= 0
 
               return (
                 <div
                   key={quiz.id}
-                  className="bg-white p-5 rounded-lg border"
+                  className={`bg-white p-5 rounded-lg border ${
+                    exhausted ? 'opacity-90' : ''
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="flex-1 min-w-0">
@@ -131,6 +134,11 @@ export default async function LearnPage({
                         {p && (
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
                             Best: {p.best_score}
+                          </span>
+                        )}
+                        {exhausted && (
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                            🔒 Locked
                           </span>
                         )}
                       </div>
@@ -146,8 +154,14 @@ export default async function LearnPage({
                             ⏱ {Math.round(quiz.time_limit_seconds / 60)} min
                           </span>
                         )}
-                        <span>
-                          Attempts: {attemptsUsed}/{quiz.max_attempts}
+                        <span
+                          className={
+                            exhausted ? 'text-red-600 font-medium' : ''
+                          }
+                        >
+                          {exhausted
+                            ? 'Attempts used up'
+                            : `Attempts: ${attemptsUsed}/${quiz.max_attempts}`}
                         </span>
                       </div>
                     </div>
