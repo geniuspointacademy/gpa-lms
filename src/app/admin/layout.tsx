@@ -38,6 +38,18 @@ export default async function AdminLayout({
         >
           Codes
         </Link>
+        <Link
+          href="/admin/students"
+          className="px-4 py-2 text-sm font-medium hover:bg-gray-100 rounded-t whitespace-nowrap"
+        >
+          Students
+        </Link>
+        <Link
+          href="/admin/exports"
+          className="px-4 py-2 text-sm font-medium hover:bg-gray-100 rounded-t whitespace-nowrap"
+        >
+          Exports
+        </Link>
       </nav>
 
       {children}
