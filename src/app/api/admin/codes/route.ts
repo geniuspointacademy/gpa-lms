@@ -1,4 +1,5 @@
-import { createServerClient } from '@supabase/ssr'
+import { logAdminAction } from '@/lib/audit'
+  import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
@@ -91,7 +92,15 @@ export async function POST(req: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-
+  await logAdminAction({
+    adminId: check.userId!,
+    action: 'codes.generate',
+    targetType: 'course',
+    targetId: course_id,
+    targetLabel: `Course ${course_id.slice(0, 8)}`,
+    details: { quantity: qty },
+  })
+  
   return NextResponse.json({ codes: data })
 }
 
