@@ -13,7 +13,10 @@ type Question = {
   points: number
   hint: string | null
   topic_tag: string | null
-  question_answers: { correct_answer: string[]; explanation: string | null } | null
+  question_answers: {
+    correct_answer: string[]
+    explanation: string | null
+  } | null
 }
 
 export default function QuestionEditor({
@@ -26,14 +29,11 @@ export default function QuestionEditor({
   const router = useRouter()
   const [questions, setQuestions] = useState(initialQuestions)
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   async function deleteQuestion(id: string) {
     if (!confirm('Delete this question?')) return
-
-    const res = await fetch(`/api/admin/questions/${id}`, {
-      method: 'DELETE',
-    })
-
+    const res = await fetch(`/api/admin/questions/${id}`, { method: 'DELETE' })
     if (res.ok) {
       setQuestions((prev) => prev.filter((q) => q.id !== id))
       router.refresh()
@@ -48,14 +48,32 @@ export default function QuestionEditor({
         </div>
       )}
 
-      {questions.map((q, i) => (
-        <QuestionItem
-          key={q.id}
-          question={q}
-          index={i + 1}
-          onDelete={() => deleteQuestion(q.id)}
-        />
-      ))}
+      {questions.map((q, i) =>
+        editingId === q.id ? (
+          <QuestionForm
+            key={q.id}
+            quizId={quizId}
+            existing={q}
+            nextOrderIndex={q.order_index}
+            onSuccess={(updated) => {
+              setQuestions((prev) =>
+                prev.map((item) => (item.id === updated.id ? updated : item))
+              )
+              setEditingId(null)
+              router.refresh()
+            }}
+            onCancel={() => setEditingId(null)}
+          />
+        ) : (
+          <QuestionItem
+            key={q.id}
+            question={q}
+            index={i + 1}
+            onEdit={() => setEditingId(q.id)}
+            onDelete={() => deleteQuestion(q.id)}
+          />
+        )
+      )}
 
       {showForm ? (
         <QuestionForm
@@ -69,12 +87,14 @@ export default function QuestionEditor({
           onCancel={() => setShowForm(false)}
         />
       ) : (
-        <button
-          onClick={() => setShowForm(true)}
-          className="w-full bg-gpa-green text-white py-3 rounded-lg font-medium hover:opacity-90"
-        >
-          + Add New Question
-        </button>
+        !editingId && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="w-full bg-gpa-green text-white py-3 rounded-lg font-medium hover:opacity-90"
+          >
+            + Add New Question
+          </button>
+        )
       )}
     </div>
   )
@@ -83,10 +103,12 @@ export default function QuestionEditor({
 function QuestionItem({
   question,
   index,
+  onEdit,
   onDelete,
 }: {
   question: Question
   index: number
+  onEdit: () => void
   onDelete: () => void
 }) {
   const correct = question.question_answers?.correct_answer || []
@@ -98,9 +120,7 @@ function QuestionItem({
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className="text-xs font-bold text-gray-500">
-              Q{index}
-            </span>
+            <span className="text-xs font-bold text-gray-500">Q{index}</span>
             <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
               {question.points} pt{question.points !== 1 ? 's' : ''}
             </span>
@@ -160,12 +180,20 @@ function QuestionItem({
           )}
         </div>
 
-        <button
-          onClick={onDelete}
-          className="text-red-600 hover:text-red-800 text-sm shrink-0"
-        >
-          Delete
-        </button>
+        <div className="flex gap-2 shrink-0 flex-col">
+          <button
+            onClick={onEdit}
+            className="text-sm bg-gpa-navy text-white px-3 py-1 rounded hover:opacity-90"
+          >
+            Edit
+          </button>
+          <button
+            onClick={onDelete}
+            className="text-red-600 hover:text-red-800 text-sm"
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -173,23 +201,40 @@ function QuestionItem({
 
 function QuestionForm({
   quizId,
+  existing,
   nextOrderIndex,
   onSuccess,
   onCancel,
 }: {
   quizId: string
+  existing?: Question
   nextOrderIndex: number
   onSuccess: (q: Question) => void
   onCancel: () => void
 }) {
-  const [text, setText] = useState('')
-  const [options, setOptions] = useState(['', '', '', ''])
-  const [correctIndex, setCorrectIndex] = useState(0)
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
-  const [hint, setHint] = useState('')
-  const [topicTag, setTopicTag] = useState('')
-  const [explanation, setExplanation] = useState('')
-  const [points, setPoints] = useState(1)
+  const isEdit = !!existing
+
+  const [text, setText] = useState(existing?.text ?? '')
+  const [options, setOptions] = useState(
+    existing?.options?.length
+      ? [...existing.options, '', '', '', ''].slice(0, Math.max(4, existing.options.length))
+      : ['', '', '', '']
+  )
+  const [correctIndex, setCorrectIndex] = useState(() => {
+    if (!existing) return 0
+    const correct = existing.question_answers?.correct_answer?.[0]
+    const idx = existing.options?.findIndex((o) => o === correct) ?? 0
+    return idx >= 0 ? idx : 0
+  })
+  const [imageUrl, setImageUrl] = useState<string | null>(
+    existing?.image_url ?? null
+  )
+  const [hint, setHint] = useState(existing?.hint ?? '')
+  const [topicTag, setTopicTag] = useState(existing?.topic_tag ?? '')
+  const [explanation, setExplanation] = useState(
+    existing?.question_answers?.explanation ?? ''
+  )
+  const [points, setPoints] = useState(existing?.points ?? 1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -213,21 +258,28 @@ function QuestionForm({
 
     const correctAnswer = [options[correctIndex].trim()]
 
-    const res = await fetch('/api/admin/questions', {
-      method: 'POST',
+    const payload = {
+      quiz_id: quizId,
+      text,
+      options: filledOptions,
+      correct_answer: correctAnswer,
+      image_url: imageUrl,
+      order_index: nextOrderIndex,
+      points,
+      hint: hint.trim() || null,
+      topic_tag: topicTag.trim() || null,
+      explanation: explanation.trim() || null,
+    }
+
+    const url = isEdit
+      ? `/api/admin/questions/${existing!.id}`
+      : '/api/admin/questions'
+    const method = isEdit ? 'PATCH' : 'POST'
+
+    const res = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        quiz_id: quizId,
-        text,
-        options: filledOptions,
-        correct_answer: correctAnswer,
-        image_url: imageUrl,
-        order_index: nextOrderIndex,
-        points,
-        hint: hint.trim() || null,
-        topic_tag: topicTag.trim() || null,
-        explanation: explanation.trim() || null,
-      }),
+      body: JSON.stringify(payload),
     })
 
     const json = await res.json()
@@ -247,7 +299,7 @@ function QuestionForm({
       className="bg-white p-6 rounded-lg border space-y-4 border-gpa-green"
     >
       <div className="flex items-center justify-between">
-        <h4 className="font-bold">New Question</h4>
+        <h4 className="font-bold">{isEdit ? 'Edit Question' : 'New Question'}</h4>
         <button
           type="button"
           onClick={onCancel}
@@ -264,7 +316,6 @@ function QuestionForm({
           onChange={(e) => setText(e.target.value)}
           required
           rows={2}
-          placeholder="Type the question here..."
           className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green"
         />
       </div>
@@ -296,62 +347,50 @@ function QuestionForm({
             </div>
           ))}
         </div>
-        <p className="text-xs text-gray-500 mt-1">
-          Select the radio button next to the correct answer
-        </p>
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">
-          Image (optional)
-        </label>
+        <label className="block text-sm font-medium mb-1">Image (optional)</label>
         <ImageUploader value={imageUrl} onChange={setImageUrl} />
       </div>
 
-      <div className="border-t pt-4">
-        <p className="text-sm font-medium mb-3 text-gpa-navy">
-          Optional learning aids
-        </p>
+      <div className="border-t pt-4 space-y-3">
+        <p className="text-sm font-medium text-gpa-navy">Optional learning aids</p>
 
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium mb-1 text-gray-600">
-              💡 Hint (shown during quiz if student clicks &quot;Need a hint?&quot;)
-            </label>
-            <textarea
-              value={hint}
-              onChange={(e) => setHint(e.target.value)}
-              rows={2}
-              placeholder="e.g. Think about force and acceleration..."
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
-            />
-          </div>
+        <div>
+          <label className="block text-xs font-medium mb-1 text-gray-600">
+            💡 Hint
+          </label>
+          <textarea
+            value={hint}
+            onChange={(e) => setHint(e.target.value)}
+            rows={2}
+            className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
+          />
+        </div>
 
-          <div>
-            <label className="block text-xs font-medium mb-1 text-gray-600">
-              📖 Explanation (shown after submission on results page)
-            </label>
-            <textarea
-              value={explanation}
-              onChange={(e) => setExplanation(e.target.value)}
-              rows={2}
-              placeholder="e.g. F = ma is Newton's second law..."
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
-            />
-          </div>
+        <div>
+          <label className="block text-xs font-medium mb-1 text-gray-600">
+            📖 Explanation
+          </label>
+          <textarea
+            value={explanation}
+            onChange={(e) => setExplanation(e.target.value)}
+            rows={2}
+            className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
+          />
+        </div>
 
-          <div>
-            <label className="block text-xs font-medium mb-1 text-gray-600">
-              🏷️ Topic Tag (optional, helps students understand context)
-            </label>
-            <input
-              type="text"
-              value={topicTag}
-              onChange={(e) => setTopicTag(e.target.value)}
-              placeholder="e.g. Newton's Laws, Kinematics"
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
-            />
-          </div>
+        <div>
+          <label className="block text-xs font-medium mb-1 text-gray-600">
+            🏷️ Topic Tag
+          </label>
+          <input
+            type="text"
+            value={topicTag}
+            onChange={(e) => setTopicTag(e.target.value)}
+            className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
+          />
         </div>
       </div>
 
@@ -377,7 +416,7 @@ function QuestionForm({
         disabled={loading}
         className="bg-gpa-green text-white px-6 py-2 rounded font-medium hover:opacity-90 disabled:opacity-50"
       >
-        {loading ? 'Saving...' : 'Save Question'}
+        {loading ? 'Saving...' : isEdit ? 'Update Question' : 'Save Question'}
       </button>
     </form>
   )
