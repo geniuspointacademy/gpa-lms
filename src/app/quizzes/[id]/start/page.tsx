@@ -32,7 +32,10 @@ export default async function StartQuizPage({
   )
 
   const { data: { user } } = await userClient.auth.getUser()
+  console.log('[START] user:', user?.id, user?.email)
+
   if (!user) {
+    console.log('[START] redirect: no user, going to /login')
     redirect('/login')
   }
 
@@ -49,25 +52,36 @@ export default async function StartQuizPage({
     .eq('is_published', true)
     .single()
 
+  console.log('[START] quiz lookup:', {
+    params_id: params.id,
+    quiz_found: !!quiz,
+    quiz_published: quiz?.is_published,
+    quiz_course_id: quiz?.course_id,
+  })
+
   if (!quiz) {
+    console.log('[START] redirect: quiz not found, going to /courses')
     redirect('/courses')
   }
 
   const { data: access } = await adminClient
-  .from('user_course_access')
-  .select('id')
-  .eq('user_id', user.id)
-  .eq('course_id', quiz.course_id)
-  .maybeSingle()
+    .from('user_course_access')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('course_id', quiz.course_id)
+    .maybeSingle()
 
-if (!access) {
-  // TEMP: Log for debugging — remove after
-  console.log('ACCESS CHECK FAILED', {
+  console.log('[START] access check:', {
     user_id: user.id,
-    course_id: quiz.course_id,
+    quiz_course_id: quiz.course_id,
+    access_found: !!access,
   })
-  redirect(`/courses/${quiz.course_id}`)
-}
+
+  if (!access) {
+    console.log('[START] redirect: no access, going back to course page')
+    redirect(`/courses/${quiz.course_id}`)
+  }
+
   const { count: attemptCount } = await adminClient
     .from('quiz_attempts')
     .select('*', { count: 'exact', head: true })
@@ -75,7 +89,14 @@ if (!access) {
     .eq('quiz_id', params.id)
 
   const attemptsUsed = attemptCount ?? 0
+
+  console.log('[START] attempts:', {
+    attemptsUsed,
+    max_attempts: quiz.max_attempts,
+  })
+
   if (attemptsUsed >= quiz.max_attempts) {
+    console.log('[START] redirect: max attempts reached, going to results')
     redirect(`/quizzes/${params.id}/results`)
   }
 
@@ -84,6 +105,10 @@ if (!access) {
     .select('id, text, options, image_url, question_type, order_index, points, hint, topic_tag')
     .eq('quiz_id', params.id)
     .order('order_index', { ascending: true })
+
+  console.log('[START] questions:', {
+    count: questions?.length ?? 0,
+  })
 
   if (!questions || questions.length === 0) {
     return (
@@ -105,9 +130,17 @@ if (!access) {
     .select()
     .single()
 
+  console.log('[START] attempt creation:', {
+    success: !!attempt,
+    error: attemptError?.message,
+  })
+
   if (attemptError || !attempt) {
+    console.log('[START] redirect: attempt creation failed')
     redirect(`/courses/${quiz.course_id}`)
   }
+
+  console.log('[START] rendering quiz player for attempt:', attempt.id)
 
   return (
     <QuizPlayer
