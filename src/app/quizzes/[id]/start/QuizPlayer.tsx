@@ -50,16 +50,16 @@ export default function QuizPlayer({
     if (!quiz.timeLimitSeconds) return
 
     const startMs = new Date(startedAt).getTime()
-    const deadlineMs = startMs + quiz.timeLimitSeconds * 1000
-
+// Add 5-second buffer to account for clock skew between server and client
+const deadlineMs = startMs + quiz.timeLimitSeconds * 1000 + 5000
     const tick = () => {
       const remaining = Math.max(0, Math.floor((deadlineMs - Date.now()) / 1000))
       setTimeLeft(remaining)
 
-      if (remaining === 0 && !submittedRef.current) {
-        submittedRef.current = true
-        handleSubmit(true)
-      }
+      if (remaining === 0 && !submittedRef.current && Date.now() - startMs > 3000) {
+  submittedRef.current = true
+  handleSubmit(true)
+}
     }
 
     tick()
