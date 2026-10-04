@@ -63,7 +63,6 @@ export default async function ResultsPage({
     .maybeSingle()
 
   if (!attempt) {
-    // No submitted attempt yet — send back to start
     redirect(`/quizzes/${params.id}/start`)
   }
 
@@ -127,7 +126,10 @@ export default async function ResultsPage({
         <p className="text-sm text-gray-500">
           Attempt {attemptsUsed} of {quiz.max_attempts}
           {progress && progress.best_score > score && (
-            <> · Best: {progress.best_score}/{maxScore}</>
+            <>
+              {' '}
+              · Best: {progress.best_score}/{maxScore}
+            </>
           )}
         </p>
 
@@ -138,15 +140,26 @@ export default async function ResultsPage({
           >
             Back to Course
           </Link>
-          {canRetake && (
+
+          {canRetake ? (
             <Link
               href={`/quizzes/${quiz.id}/start`}
               className="px-5 py-2 rounded font-medium bg-gpa-green text-white hover:opacity-90"
             >
               Retake Quiz
             </Link>
+          ) : (
+            <div className="px-5 py-2 text-sm text-gray-500 self-center">
+              🔒 All attempts used
+            </div>
           )}
         </div>
+
+        {!canRetake && (
+          <p className="text-xs text-gray-400 mt-4">
+            Need another attempt? Contact the admin.
+          </p>
+        )}
       </div>
 
       <section>
@@ -156,13 +169,14 @@ export default async function ResultsPage({
           {(questions ?? []).map((q, i) => {
             const correctAnswer =
               (q.question_answers as any)?.correct_answer?.[0] ?? null
-            const explanation = (q.question_answers as any)?.explanation ?? null
+            const explanation =
+              (q.question_answers as any)?.explanation ?? null
             const userAnswer = (attempt as any).answers?.[q.id] ?? null
             const isCorrect = userAnswer === correctAnswer
 
             return (
               <div key={q.id} className="bg-white p-5 rounded-lg border">
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
                   <span className="text-xs font-bold text-gray-500">
                     Q{i + 1}
                   </span>
@@ -178,6 +192,11 @@ export default async function ResultsPage({
                   <span className="text-xs text-gray-400">
                     {q.points} pt{q.points !== 1 ? 's' : ''}
                   </span>
+                  {q.topic_tag && (
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                      {q.topic_tag}
+                    </span>
+                  )}
                 </div>
 
                 <p className="font-medium mb-3">{q.text}</p>
@@ -211,7 +230,7 @@ export default async function ResultsPage({
                         <span>{opt}</span>
                         {isCorrectOpt && (
                           <span className="text-xs font-medium ml-auto">
-                            ✓ Correct answer
+                            ✓ Correct
                           </span>
                         )}
                         {isUserChoice && !isCorrectOpt && (
