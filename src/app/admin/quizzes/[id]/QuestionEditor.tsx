@@ -11,7 +11,9 @@ type Question = {
   image_url: string | null
   order_index: number
   points: number
-  question_answers: { correct_answer: string[] } | null
+  hint: string | null
+  topic_tag: string | null
+  question_answers: { correct_answer: string[]; explanation: string | null } | null
 }
 
 export default function QuestionEditor({
@@ -88,19 +90,25 @@ function QuestionItem({
   onDelete: () => void
 }) {
   const correct = question.question_answers?.correct_answer || []
+  const explanation = question.question_answers?.explanation || null
   const options = question.options || []
 
   return (
     <div className="bg-white p-4 rounded-lg border">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="text-xs font-bold text-gray-500">
               Q{index}
             </span>
             <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
               {question.points} pt{question.points !== 1 ? 's' : ''}
             </span>
+            {question.topic_tag && (
+              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                {question.topic_tag}
+              </span>
+            )}
           </div>
 
           <p className="font-medium mb-3">{question.text}</p>
@@ -136,6 +144,20 @@ function QuestionItem({
               )
             })}
           </ul>
+
+          {question.hint && (
+            <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded p-2 text-xs">
+              <span className="font-medium text-yellow-900">💡 Hint:</span>{' '}
+              <span className="text-yellow-800">{question.hint}</span>
+            </div>
+          )}
+
+          {explanation && (
+            <div className="mt-2 bg-blue-50 border border-blue-200 rounded p-2 text-xs">
+              <span className="font-medium text-blue-900">Explanation:</span>{' '}
+              <span className="text-blue-800">{explanation}</span>
+            </div>
+          )}
         </div>
 
         <button
@@ -164,6 +186,9 @@ function QuestionForm({
   const [options, setOptions] = useState(['', '', '', ''])
   const [correctIndex, setCorrectIndex] = useState(0)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [hint, setHint] = useState('')
+  const [topicTag, setTopicTag] = useState('')
+  const [explanation, setExplanation] = useState('')
   const [points, setPoints] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -199,6 +224,9 @@ function QuestionForm({
         image_url: imageUrl,
         order_index: nextOrderIndex,
         points,
+        hint: hint.trim() || null,
+        topic_tag: topicTag.trim() || null,
+        explanation: explanation.trim() || null,
       }),
     })
 
@@ -278,6 +306,53 @@ function QuestionForm({
           Image (optional)
         </label>
         <ImageUploader value={imageUrl} onChange={setImageUrl} />
+      </div>
+
+      <div className="border-t pt-4">
+        <p className="text-sm font-medium mb-3 text-gpa-navy">
+          Optional learning aids
+        </p>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium mb-1 text-gray-600">
+              💡 Hint (shown during quiz if student clicks &quot;Need a hint?&quot;)
+            </label>
+            <textarea
+              value={hint}
+              onChange={(e) => setHint(e.target.value)}
+              rows={2}
+              placeholder="e.g. Think about force and acceleration..."
+              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium mb-1 text-gray-600">
+              📖 Explanation (shown after submission on results page)
+            </label>
+            <textarea
+              value={explanation}
+              onChange={(e) => setExplanation(e.target.value)}
+              rows={2}
+              placeholder="e.g. F = ma is Newton's second law..."
+              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium mb-1 text-gray-600">
+              🏷️ Topic Tag (optional, helps students understand context)
+            </label>
+            <input
+              type="text"
+              value={topicTag}
+              onChange={(e) => setTopicTag(e.target.value)}
+              placeholder="e.g. Newton's Laws, Kinematics"
+              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="w-32">
