@@ -17,37 +17,18 @@ const ACTION_LABELS: Record<string, string> = {
   'codes.generate': 'Generated codes',
 }
 
-export default async function ActivityPage({
-  searchParams,
-}: {
-  searchParams: { admin?: string; action?: string }
-}) {
+export default async function ActivityPage() {
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } }
   )
 
-  let query = adminClient
+  const { data: logs, error } = await adminClient
     .from('admin_audit_logs')
-    .select('id, action, target_label, details, created_at, admin_id')
+    .select('id, action, target_label, details, created_at')
     .order('created_at', { ascending: false })
     .limit(200)
-
-  if (searchParams.admin) {
-    query = query.eq('admin_id', searchParams.admin)
-  }
-  if (searchParams.action) {
-    query = query.eq('action', searchParams.action)
-  }
-
-  const { data: logs, error } = await query
-
-  const { data: admins } = await adminClient
-    .from('users')
-    .select('id, email, full_name')
-    .eq('role', 'admin')
-    .order('email')
 
   function timeAgo(dateStr: string): string {
     const ms = Date.now() - new Date(dateStr).getTime()
@@ -68,44 +49,6 @@ export default async function ActivityPage({
         <p className="text-sm text-gray-600">
           Every admin action on the platform, newest first.
         </p>
-      </div>
-
-      <div className="bg-white p-4 rounded-lg border flex gap-3 flex-wrap items-center">
-        <span className="text-sm font-medium text-gray-700">Filter:</span>
-        <form className="flex gap-3 flex-wrap items-center">
-          <select
-            name="admin"
-            defaultValue={searchParams.admin ?? ''}
-            className="border rounded px-3 py-1.5 text-sm"
-          >
-            <option value="">All admins</option>
-            {(admins ?? []).map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.full_name || a.email}
-              </option>
-            ))}
-          </select>
-
-          <select
-            name="action"
-            defaultValue={searchParams.action ?? ''}
-            className="border rounded px-3 py-1.5 text-sm"
-          >
-            <option value="">All actions</option>
-            {Object.entries(ACTION_LABELS).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="submit"
-            className="bg-gpa-navy text-white px-4 py-1.5 rounded text-sm font-medium hover:opacity-90"
-          >
-            Apply
-          </button>
-        </form>
       </div>
 
       {error && (
