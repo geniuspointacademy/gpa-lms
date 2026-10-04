@@ -1,4 +1,5 @@
-import { createServerClient } from '@supabase/ssr'
+import { logAdminAction } from '@/lib/audit'
+  import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
@@ -66,6 +67,15 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+    await logAdminAction({
+    adminId: check.userId!,
+    action: 'quiz.create',
+    targetType: 'quiz',
+    targetId: data.id,
+    targetLabel: data.title,
+    details: { course_id: data.course_id },
+  })
+  
   return NextResponse.json({ quiz: data })
 }
 
