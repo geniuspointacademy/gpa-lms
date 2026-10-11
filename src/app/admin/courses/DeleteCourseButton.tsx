@@ -15,7 +15,7 @@ export default function DeleteCourseButton({
 
   async function handleDelete() {
     const confirmed = window.confirm(
-      `Delete "${courseTitle}"?\n\nThis cannot be undone.`
+      `Delete "${courseTitle}"?\n\nThis cannot be undone. If the course has students or codes, you'll be asked to deactivate it instead.`
     )
     if (!confirmed) return
 
@@ -41,13 +41,52 @@ export default function DeleteCourseButton({
     }
   }
 
+  async function handleDeactivate() {
+    const confirmed = window.confirm(
+      `Deactivate "${courseTitle}"?\n\nStudents will no longer see it in the catalog, but their access stays intact. You can reactivate anytime.`
+    )
+    if (!confirmed) return
+
+    setLoading(true)
+
+    try {
+      const res = await fetch(`/api/admin/courses/${courseId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: false }),
+      })
+
+      const json = await res.json()
+
+      if (!res.ok) {
+        alert(json.error || 'Deactivate failed')
+        setLoading(false)
+        return
+      }
+
+      router.refresh()
+    } catch {
+      alert('Network error. Please try again.')
+      setLoading(false)
+    }
+  }
+
   return (
-    <button
-      onClick={handleDelete}
-      disabled={loading}
-      className="text-xs bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700 disabled:opacity-50"
-    >
-      {loading ? '...' : 'Delete'}
-    </button>
+    <div className="flex gap-2">
+      <button
+        onClick={handleDeactivate}
+        disabled={loading}
+        className="text-xs border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-50 disabled:opacity-50"
+      >
+        {loading ? '...' : 'Deactivate'}
+      </button>
+      <button
+        onClick={handleDelete}
+        disabled={loading}
+        className="text-xs bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700 disabled:opacity-50"
+      >
+        {loading ? '...' : 'Delete'}
+      </button>
+    </div>
   )
 }
