@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation'
 export default function DeleteCourseButton({
   courseId,
   courseTitle,
+  isActive,
 }: {
   courseId: string
   courseTitle: string
+  isActive: boolean
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -41,9 +43,14 @@ export default function DeleteCourseButton({
     }
   }
 
-  async function handleDeactivate() {
+  async function handleToggleActive() {
+    const action = isActive ? 'Deactivate' : 'Reactivate'
+    const detail = isActive
+      ? 'Students will no longer see it in the catalog, but their access stays intact.'
+      : 'The course will appear again in the public catalog.'
+
     const confirmed = window.confirm(
-      `Deactivate "${courseTitle}"?\n\nStudents will no longer see it in the catalog, but their access stays intact. You can reactivate anytime.`
+      `${action} "${courseTitle}"?\n\n${detail}`
     )
     if (!confirmed) return
 
@@ -53,13 +60,13 @@ export default function DeleteCourseButton({
       const res = await fetch(`/api/admin/courses/${courseId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: false }),
+        body: JSON.stringify({ is_active: !isActive }),
       })
 
       const json = await res.json()
 
       if (!res.ok) {
-        alert(json.error || 'Deactivate failed')
+        alert(json.error || `${action} failed`)
         setLoading(false)
         return
       }
@@ -74,11 +81,15 @@ export default function DeleteCourseButton({
   return (
     <div className="flex gap-2">
       <button
-        onClick={handleDeactivate}
+        onClick={handleToggleActive}
         disabled={loading}
-        className="text-xs border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-50 disabled:opacity-50"
+        className={`text-xs px-3 py-1.5 rounded disabled:opacity-50 ${
+          isActive
+            ? 'border border-gray-300 hover:bg-gray-50'
+            : 'bg-gpa-green text-white hover:opacity-90'
+        }`}
       >
-        {loading ? '...' : 'Deactivate'}
+        {loading ? '...' : isActive ? 'Deactivate' : 'Reactivate'}
       </button>
       <button
         onClick={handleDelete}
