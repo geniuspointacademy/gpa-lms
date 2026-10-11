@@ -1,5 +1,4 @@
-'use client'
-
+'use client
 type Props = {
   courseTitle: string
   studentName?: string | null
