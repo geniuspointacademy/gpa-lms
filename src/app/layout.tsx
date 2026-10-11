@@ -1,36 +1,16 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Inter, Playfair_Display } from 'next/font/google'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import SignOutButton from '@/components/SignOutButton'
+import FloatingWhatsApp from '@/components/FloatingWhatsApp'
 import './globals.css'
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'swap',
-})
-
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  variable: '--font-serif',
-  display: 'swap',
-})
 
 export const metadata: Metadata = {
   title: 'Genius Point Academy — Your Academic Breakthrough Starts Here',
   description:
-    'Structured courses, timed assessments, and honest progress tracking for students who want more than just a passing grade.',
-  keywords: [
-    'GPA',
-    'Genius Point Academy',
-    'online quizzes',
-    'academic excellence',
-    'FUTA',
-    'tutorials',
-  ],
+    'Structured courses, timed assessments, and honest progress tracking.',
 }
 
 export default async function RootLayout({
@@ -61,7 +41,6 @@ export default async function RootLayout({
   const { data: { user } } = await supabase.auth.getUser()
 
   let role = 'student'
-
   if (user) {
     const { data } = await supabase
       .from('users')
@@ -72,26 +51,20 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
-      <body className="min-h-screen flex flex-col font-sans">
-        <header className="bg-gpa-navy text-white shadow-lg sticky top-0 z-50 backdrop-blur-sm bg-opacity-95">
+    <html lang="en">
+      <body className="min-h-screen flex flex-col">
+        <header className="bg-gpa-navy text-white shadow-lg">
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-            <Link
-              href="/"
-              className="flex items-center gap-3 shrink-0 group"
-            >
-              <div className="relative">
-                <Image
-                  src="/logo.png"
-                  alt="Genius Point Academy"
-                  width={44}
-                  height={44}
-                  priority
-                  className="rounded transition-transform group-hover:scale-105"
-                />
-                <div className="absolute inset-0 rounded bg-gpa-gold opacity-0 group-hover:opacity-20 transition-opacity" />
-              </div>
-              <span className="font-serif font-bold text-base leading-tight hidden sm:block">
+            <Link href="/" className="flex items-center gap-3 shrink-0">
+              <Image
+                src="/logo.png"
+                alt="Genius Point Academy"
+                width={44}
+                height={44}
+                priority
+                className="rounded"
+              />
+              <span className="font-bold text-base leading-tight hidden sm:block">
                 Genius Point
                 <br />
                 <span className="text-gpa-gold">Academy</span>
@@ -134,9 +107,9 @@ export default async function RootLayout({
                   </Link>
                   <Link
                     href="/signup"
-                    className="btn-gold px-4 py-2 rounded font-semibold whitespace-nowrap text-sm"
+                    className="bg-gpa-gold text-gpa-navy px-4 py-2 rounded font-semibold whitespace-nowrap text-sm hover:opacity-90"
                   >
-                    Sign Up Free
+                    Sign Up
                   </Link>
                 </>
               )}
@@ -158,13 +131,13 @@ export default async function RootLayout({
                     height={36}
                     className="rounded"
                   />
-                  <span className="font-serif font-bold text-lg">
-                    Genius Point <span className="text-gpa-gold">Academy</span>
+                  <span className="font-bold text-lg">
+                    Genius Point{' '}
+                    <span className="text-gpa-gold">Academy</span>
                   </span>
                 </div>
                 <p className="text-sm text-gray-300">
                   A learning community built for academic excellence.
-                  Your academic breakthrough starts here.
                 </p>
               </div>
 
@@ -205,19 +178,20 @@ export default async function RootLayout({
                   Get in Touch
                 </h4>
                 <p className="text-sm text-gray-300">
-                  Have a question or need an access code?
-                  <br />
-                  Message the admin on WhatsApp.
+                  Have a question or need an access code? Tap the green button
+                  at the bottom-right of any page.
                 </p>
               </div>
             </div>
 
             <div className="border-t border-white border-opacity-10 mt-8 pt-6 text-center text-xs text-gray-400">
-              © {new Date().getFullYear()} Genius Point Academy. A learning
-              community built for academic excellence.
+              © {new Date().getFullYear()} Genius Point Academy
             </div>
           </div>
         </footer>
+
+        {/* Floating WhatsApp button — appears on every page */}
+        <FloatingWhatsApp />
       </body>
     </html>
   )
