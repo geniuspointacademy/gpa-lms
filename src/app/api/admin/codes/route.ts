@@ -1,10 +1,20 @@
-import { logAdminAction } from '@/lib/audit'
-  import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-async function verifyAdmin() {
+// Code charset: no I, L, O, 0, 1 (look-alike characters)
+const CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+
+function randomSegment(length: number): string {
+  let out = ''
+  for (let i = 0; i < length; i++) {
+    out += CHARSET[Math.floor(Math.random() * CHARSET.length)]
+  }
+  return out
+}
+
+async function getAdminUser() {
   const cookieStore = cookies()
   const userClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,7 +36,7 @@ async function verifyAdmin() {
   )
 
   const { data: { user } } = await userClient.auth.getUser()
-  if (!user) return { error: 'Unauthorized', status: 401 }
+  if (!user) return null
 
   const { data: profile } = await userClient
     .from('users')
@@ -34,26 +44,15 @@ async function verifyAdmin() {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') return { error: 'Forbidden', status: 403 }
+  if (profile?.role !== 'admin') return null
 
-  return { ok: true, userId: user.id }
-}
-
-// Code charset: no I, L, O, 0, 1
-const CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
-
-function randomSegment(length: number): string {
-  let out = ''
-  for (let i = 0; i < length; i++) {
-    out += CHARSET[Math.floor(Math.random() * CHARSET.length)]
-  }
-  return out
+  return user
 }
 
 export async function POST(req: Request) {
-  const check = await verifyAdmin()
-  if ('error' in check) {
-    return NextResponse.json({ error: check.error }, { status: check.status })
+  const user = await getAdminUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const body = await req.json()
@@ -73,14 +72,16 @@ export async function POST(req: Request) {
 
   // Generate unique codes
   const codes = new Set<string>()
-  while (codes.size < qty) {
+  let attempts = 0
+  while (codes.size < qty && attempts < qty * 5) {
     codes.add(`GPA-${randomSegment(6)}`)
+    attempts++
   }
 
   const rows = Array.from(codes).map((code_string) => ({
     code_string,
     course_id,
-    created_by: check.userId,
+    created_by: user.id,
     is_used: false,
   }))
 
@@ -92,22 +93,14 @@ export async function POST(req: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  await logAdminAction({
-    adminId: check.userId!,
-    action: 'codes.generate',
-    targetType: 'course',
-    targetId: course_id,
-    targetLabel: `Course ${course_id.slice(0, 8)}`,
-    details: { quantity: qty },
-  })
-  
+
   return NextResponse.json({ codes: data })
 }
 
 export async function GET(req: Request) {
-  const check = await verifyAdmin()
-  if ('error' in check) {
-    return NextResponse.json({ error: check.error }, { status: check.status })
+  const user = await getAdminUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const url = new URL(req.url)
