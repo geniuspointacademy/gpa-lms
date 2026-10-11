@@ -215,16 +215,20 @@ function QuestionForm({
   const isEdit = !!existing
 
   const [text, setText] = useState(existing?.text ?? '')
-  const [options, setOptions] = useState(
-    existing?.options?.length
-      ? [...existing.options, '', '', '', ''].slice(0, Math.max(4, existing.options.length))
-      : ['', '', '', '']
-  )
-  const [correctIndex, setCorrectIndex] = useState(() => {
+  const [options, setOptions] = useState<string[]>(() => {
+    if (existing?.options?.length) {
+      const filled = [...existing.options]
+      while (filled.length < 4) filled.push('')
+      return filled.slice(0, Math.max(4, existing.options.length))
+    }
+    return ['', '', '', '']
+  })
+  const [correctIndex, setCorrectIndex] = useState<number>(() => {
     if (!existing) return 0
     const correct = existing.question_answers?.correct_answer?.[0]
-    const idx = existing.options?.findIndex((o) => o === correct) ?? 0
-    return idx >= 0 ? idx : 0
+    if (!correct) return 0
+    const idx = existing.options?.findIndex((o) => o === correct)
+    return idx != null && idx >= 0 ? idx : 0
   })
   const [imageUrl, setImageUrl] = useState<string | null>(
     existing?.image_url ?? null
@@ -258,6 +262,12 @@ function QuestionForm({
 
     const correctAnswer = [options[correctIndex].trim()]
 
+    if (!correctAnswer[0]) {
+      setError('Please fill in the correct answer option')
+      setLoading(false)
+      return
+    }
+
     const payload = {
       quiz_id: quizId,
       text,
@@ -276,21 +286,42 @@ function QuestionForm({
       : '/api/admin/questions'
     const method = isEdit ? 'PATCH' : 'POST'
 
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
 
-    const json = await res.json()
+      // Read as text first — server might return HTML on errors
+      const rawText = await res.text()
 
-    if (!res.ok) {
-      setError(json.error || 'Failed to save')
+      let json: any = {}
+      try {
+        json = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        setError(
+          `Server returned unexpected response (HTTP ${res.status}). Please try again or contact support.`
+        )
+        setLoading(false)
+        return
+      }
+
+      if (!res.ok) {
+        setError(json.error || `Request failed (HTTP ${res.status})`)
+        setLoading(false)
+        return
+      }
+
+      onSuccess(json.question)
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? `Network error: ${err.message}`
+          : 'Network error. Please try again.'
+      )
       setLoading(false)
-      return
     }
-
-    onSuccess(json.question)
   }
 
   return (
@@ -316,6 +347,7 @@ function QuestionForm({
           onChange={(e) => setText(e.target.value)}
           required
           rows={2}
+          placeholder="Type the question here..."
           className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green"
         />
       </div>
@@ -347,48 +379,58 @@ function QuestionForm({
             </div>
           ))}
         </div>
+        <p className="text-xs text-gray-500 mt-1">
+          Select the radio button next to the correct answer
+        </p>
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">Image (optional)</label>
+        <label className="block text-sm font-medium mb-1">
+          Image (optional)
+        </label>
         <ImageUploader value={imageUrl} onChange={setImageUrl} />
       </div>
 
       <div className="border-t pt-4 space-y-3">
-        <p className="text-sm font-medium text-gpa-navy">Optional learning aids</p>
+        <p className="text-sm font-medium text-gpa-navy">
+          Optional learning aids
+        </p>
 
         <div>
           <label className="block text-xs font-medium mb-1 text-gray-600">
-            💡 Hint
+            💡 Hint (shown during quiz if student clicks &quot;Need a hint?&quot;)
           </label>
           <textarea
             value={hint}
             onChange={(e) => setHint(e.target.value)}
             rows={2}
+            placeholder="e.g. Think about force and acceleration..."
             className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
           />
         </div>
 
         <div>
           <label className="block text-xs font-medium mb-1 text-gray-600">
-            📖 Explanation
+            📖 Explanation (shown after submission on results page)
           </label>
           <textarea
             value={explanation}
             onChange={(e) => setExplanation(e.target.value)}
             rows={2}
+            placeholder="e.g. F = ma is Newton's second law..."
             className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
           />
         </div>
 
         <div>
           <label className="block text-xs font-medium mb-1 text-gray-600">
-            🏷️ Topic Tag
+            🏷️ Topic Tag (optional)
           </label>
           <input
             type="text"
             value={topicTag}
             onChange={(e) => setTopicTag(e.target.value)}
+            placeholder="e.g. Newton's Laws, Kinematics"
             className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
           />
         </div>
@@ -420,4 +462,4 @@ function QuestionForm({
       </button>
     </form>
   )
-}
+        }
