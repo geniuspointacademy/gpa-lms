@@ -80,8 +80,10 @@ export default async function AdminCoursesPage() {
                     ₦{Number(course.price).toLocaleString()}
                   </div>
                   <DeleteCourseButton
-                    courseId={course.id}
-                    courseTitle={course.title}
+  courseId={course.id}
+  courseTitle={course.title}
+  isActive={course.is_active}
+/>
                   />
                 </div>
               </div>
