@@ -1,10 +1,10 @@
-import { logAdminAction } from '@/lib/audit'
-  import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-async function verifyAdmin() {
+export async function POST(req: Request) {
+  // Verify admin
   const cookieStore = cookies()
   const userClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,7 +26,9 @@ async function verifyAdmin() {
   )
 
   const { data: { user } } = await userClient.auth.getUser()
-  if (!user) return { error: 'Unauthorized', status: 401 }
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const { data: profile } = await userClient
     .from('users')
@@ -34,22 +36,28 @@ async function verifyAdmin() {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') return { error: 'Forbidden', status: 403 }
-
-  return { ok: true }
-}
-
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  const check = await verifyAdmin()
-  if ('error' in check) {
-    return NextResponse.json({ error: check.error }, { status: check.status })
+  if (profile?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  // Parse body
   const body = await req.json()
+  const {
+    course_id,
+    title,
+    topic_description,
+    time_limit_seconds,
+    max_attempts,
+  } = body
 
+  if (!course_id || !title) {
+    return NextResponse.json(
+      { error: 'Missing required fields' },
+      { status: 400 }
+    )
+  }
+
+  // Insert with service role
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -58,8 +66,14 @@ export async function PATCH(
 
   const { data, error } = await adminClient
     .from('quizzes')
-    .update(body)
-    .eq('id', params.id)
+    .insert({
+      course_id,
+      title: title.trim(),
+      topic_description: topic_description?.trim() || null,
+      time_limit_seconds: time_limit_seconds || null,
+      max_attempts: max_attempts || 1,
+      is_published: false,
+    })
     .select()
     .single()
 
@@ -67,41 +81,5 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-    await logAdminAction({
-    adminId: check.userId!,
-    action: 'quiz.create',
-    targetType: 'quiz',
-    targetId: data.id,
-    targetLabel: data.title,
-    details: { course_id: data.course_id },
-  })
-  
   return NextResponse.json({ quiz: data })
-}
-
-export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  const check = await verifyAdmin()
-  if ('error' in check) {
-    return NextResponse.json({ error: check.error }, { status: check.status })
-  }
-
-  const adminClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  )
-
-  const { error } = await adminClient
-    .from('quizzes')
-    .delete()
-    .eq('id', params.id)
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json({ success: true })
 }
