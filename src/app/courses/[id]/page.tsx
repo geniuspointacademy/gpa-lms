@@ -240,9 +240,9 @@ export default async function CourseDetailPage({
               ))}
             </ul>
 
-            <p className="text-xs text-gray-500 italic">
-              🔒 Sign in and enroll to see the answer and take the full quiz.
-            </p>
+          <p className="text-xs text-gray-500 italic">
+  🔒 Redeem a code or contact the admin to unlock this course.
+</p>
           </div>
         </div>
       )}
