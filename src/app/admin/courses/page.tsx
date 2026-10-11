@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import CourseForm from './CourseForm'
+import DeleteCourseButton from './DeleteCourseButton'
 
 export default async function AdminCoursesPage() {
   const cookieStore = cookies()
@@ -48,12 +49,14 @@ export default async function AdminCoursesPage() {
         ) : (
           <div className="space-y-3">
             {courses.map((course) => (
-              <Link
+              <div
                 key={course.id}
-                href={`/admin/courses/${course.id}`}
-                className="block bg-white p-4 rounded-lg border flex items-center justify-between gap-4 hover:bg-gray-50 hover:border-gpa-green transition-colors"
+                className="bg-white p-4 rounded-lg border flex items-center justify-between gap-4 flex-wrap"
               >
-                <div className="min-w-0">
+                <Link
+                  href={`/admin/courses/${course.id}`}
+                  className="flex-1 min-w-0 block hover:opacity-80 transition-opacity"
+                >
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-bold">{course.title}</h3>
                     <span className="text-xs bg-gray-100 px-2 py-1 rounded">
@@ -70,11 +73,18 @@ export default async function AdminCoursesPage() {
                       {course.description}
                     </p>
                   )}
+                </Link>
+
+                <div className="flex items-center gap-4 shrink-0">
+                  <div className="text-sm text-gray-600">
+                    ₦{Number(course.price).toLocaleString()}
+                  </div>
+                  <DeleteCourseButton
+                    courseId={course.id}
+                    courseTitle={course.title}
+                  />
                 </div>
-                <div className="text-right text-sm text-gray-600 shrink-0">
-                  ₦{Number(course.price).toLocaleString()}
-                </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
