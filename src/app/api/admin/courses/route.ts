@@ -1,11 +1,9 @@
-import { logAdminAction } from '@/lib/audit'
-  import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
-  // 1. Verify caller is admin using their session
   const cookieStore = cookies()
   const userClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,7 +39,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // 2. Parse and validate
   const body = await req.json()
   const { title, description, level, price, currency } = body
 
@@ -53,7 +50,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid level' }, { status: 400 })
   }
 
-  // 3. Insert with service role (bypasses RLS)
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -76,16 +72,6 @@ export async function POST(req: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  
-// Log the action
-  await logAdminAction({
-    adminId: user.id,
-    action: 'course.create',
-    targetType: 'course',
-    targetId: data.id,
-    targetLabel: data.title,
-    details: { level: data.level, price: data.price },
-  })
-  
+
   return NextResponse.json({ course: data })
 }
