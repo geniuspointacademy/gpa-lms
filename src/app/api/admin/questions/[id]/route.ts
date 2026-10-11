@@ -73,7 +73,6 @@ export async function PATCH(
     { auth: { persistSession: false } }
   )
 
-  // Update question
   const { data: question, error: qError } = await adminClient
     .from('questions')
     .update({
@@ -93,7 +92,6 @@ export async function PATCH(
     return NextResponse.json({ error: qError.message }, { status: 500 })
   }
 
-  // Upsert the answer
   const { error: aError } = await adminClient
     .from('question_answers')
     .upsert({
@@ -142,4 +140,4 @@ export async function DELETE(
   }
 
   return NextResponse.json({ success: true })
-}
+      }
