@@ -50,12 +50,6 @@ export default async function AdminLayout({
         >
           Exports
         </Link>
-        <Link
-          href="/admin/activity"
-          className="px-4 py-2 text-sm font-medium hover:bg-gray-100 rounded-t whitespace-nowrap"
-        >
-          Activity
-        </Link>
       </nav>
 
       {children}
