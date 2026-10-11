@@ -13,7 +13,10 @@ export default function WhatsAppButton({
   level,
   variant = 'default',
 }: Props) {
-  const phone = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || ''
+  // Fetch the env variable, fallback to the default admin number if missing, 
+  // and strip out any '+' signs, spaces, or dashes.
+  const rawPhone = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || '2347050376975'
+  const phone = rawPhone.replace(/\D/g, '')
 
   // Build the pre-filled message
   const lines: string[] = []
@@ -37,8 +40,11 @@ export default function WhatsAppButton({
 
   const message = encodeURIComponent(lines.join('\n'))
 
-  // api.whatsapp.com/send opens a DIRECT chat reliably on both mobile and desktop.
-  // Format: https://api.whatsapp.com/send?phone=2347050376975&text=...
+  // If the phone number somehow ends up completely empty, render nothing to prevent a broken link
+  if (!phone) {
+    return null
+  }
+
   const href = `https://api.whatsapp.com/send?phone=${phone}&text=${message}`
 
   if (variant === 'compact') {
