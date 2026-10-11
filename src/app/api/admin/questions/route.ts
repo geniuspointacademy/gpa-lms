@@ -38,10 +38,7 @@ async function verifyAdmin() {
   return { ok: true }
 }
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: Request) {
   const check = await verifyAdmin()
   if ('error' in check) {
     return NextResponse.json({ error: check.error }, { status: check.status })
@@ -49,6 +46,7 @@ export async function PATCH(
 
   const body = await req.json()
   const {
+    quiz_id,
     text,
     options,
     correct_answer,
@@ -60,8 +58,18 @@ export async function PATCH(
     explanation,
   } = body
 
-  if (!text || !Array.isArray(options) || options.length < 2) {
-    return NextResponse.json({ error: 'Invalid question data' }, { status: 400 })
+  if (!quiz_id || !text || !Array.isArray(options) || options.length < 2) {
+    return NextResponse.json(
+      { error: 'Invalid question data' },
+      { status: 400 }
+    )
+  }
+
+  if (!Array.isArray(correct_answer) || correct_answer.length === 0) {
+    return NextResponse.json(
+      { error: 'Correct answer required' },
+      { status: 400 }
+    )
   }
 
   const adminClient = createClient(
@@ -70,19 +78,19 @@ export async function PATCH(
     { auth: { persistSession: false } }
   )
 
-  // Update question
   const { data: question, error: qError } = await adminClient
     .from('questions')
-    .update({
+    .insert({
+      quiz_id,
       text: text.trim(),
       options,
       image_url: image_url || null,
+      question_type: 'single_choice',
       order_index: order_index ?? 0,
       points: points ?? 1,
       hint: hint || null,
       topic_tag: topic_tag || null,
     })
-    .eq('id', params.id)
     .select()
     .single()
 
@@ -90,16 +98,16 @@ export async function PATCH(
     return NextResponse.json({ error: qError.message }, { status: 500 })
   }
 
-  // Upsert the answer
   const { error: aError } = await adminClient
     .from('question_answers')
-    .upsert({
-      question_id: params.id,
+    .insert({
+      question_id: question.id,
       correct_answer,
       explanation: explanation || null,
     })
 
   if (aError) {
+    await adminClient.from('questions').delete().eq('id', question.id)
     return NextResponse.json({ error: aError.message }, { status: 500 })
   }
 
@@ -112,31 +120,4 @@ export async function PATCH(
       },
     },
   })
-}
-
-export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  const check = await verifyAdmin()
-  if ('error' in check) {
-    return NextResponse.json({ error: check.error }, { status: check.status })
-  }
-
-  const adminClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  )
-
-  const { error } = await adminClient
-    .from('questions')
-    .delete()
-    .eq('id', params.id)
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json({ success: true })
 }
