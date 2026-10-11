@@ -4,12 +4,21 @@ import { useState } from 'react'
 
 export default function FloatingWhatsApp() {
   const [expanded, setExpanded] = useState(false)
-  const phone = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || ''
+  
+  // Fetch the env variable, fallback to your admin number if missing, 
+  // and strip out any '+' signs, spaces, or dashes.
+  const rawPhone = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || '2347050376975'
+  const phone = rawPhone.replace(/\D/g, '')
 
   const message = encodeURIComponent(
     `Hi GPA! I have a question about the platform.`
   )
   const href = `https://api.whatsapp.com/send?phone=${phone}&text=${message}`
+
+  // Optionally, hide the entire widget if there's no valid phone number
+  if (!phone) {
+    return null
+  }
 
   return (
     <div className="fixed bottom-4 right-4 z-40 flex items-center gap-3">
