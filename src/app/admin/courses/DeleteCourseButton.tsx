@@ -12,7 +12,6 @@ export default function DeleteCourseButton({
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   async function handleDelete() {
     const confirmed = window.confirm(
@@ -21,7 +20,6 @@ export default function DeleteCourseButton({
     if (!confirmed) return
 
     setLoading(true)
-    setError(null)
 
     try {
       const res = await fetch(`/api/admin/courses/${courseId}`, {
