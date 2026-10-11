@@ -1,3 +1,4 @@
+
 import Link from 'next/link'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
@@ -80,10 +81,9 @@ export default async function AdminCoursesPage() {
                     ₦{Number(course.price).toLocaleString()}
                   </div>
                   <DeleteCourseButton
-  courseId={course.id}
-  courseTitle={course.title}
-  isActive={course.is_active}
-/>
+                    courseId={course.id}
+                    courseTitle={course.title}
+                    isActive={course.is_active}
                   />
                 </div>
               </div>
