@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Link from 'next/link
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
