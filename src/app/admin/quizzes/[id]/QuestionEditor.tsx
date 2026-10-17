@@ -40,6 +40,20 @@ export default function QuestionEditor({
     }
   }
 
+  // This function handles the instant visual update when a question is saved
+  function handleSaveSuccess(savedQuestion: Question) {
+    setQuestions((prev) => {
+      const exists = prev.find((q) => q.id === savedQuestion.id)
+      if (exists) {
+        return prev.map((q) => (q.id === savedQuestion.id ? savedQuestion : q))
+      }
+      return [...prev, savedQuestion]
+    })
+    setShowForm(false)
+    setEditingId(null)
+    router.refresh()
+  }
+
   return (
     <div className="space-y-4">
       {questions.length === 0 && !showForm && (
@@ -55,13 +69,7 @@ export default function QuestionEditor({
             quizId={quizId}
             existing={q}
             nextOrderIndex={q.order_index}
-            onSuccess={(updated) => {
-              setQuestions((prev) =>
-                prev.map((item) => (item.id === updated.id ? updated : item))
-              )
-              setEditingId(null)
-              router.refresh()
-            }}
+            onSuccess={handleSaveSuccess}
             onCancel={() => setEditingId(null)}
           />
         ) : (
@@ -79,11 +87,7 @@ export default function QuestionEditor({
         <QuestionForm
           quizId={quizId}
           nextOrderIndex={questions.length}
-          onSuccess={(newQuestion) => {
-            setQuestions((prev) => [...prev, newQuestion])
-            setShowForm(false)
-            router.refresh()
-          }}
+          onSuccess={handleSaveSuccess}
           onCancel={() => setShowForm(false)}
         />
       ) : (
@@ -293,16 +297,12 @@ function QuestionForm({
         body: JSON.stringify(payload),
       })
 
-      // Read as text first — server might return HTML on errors
       const rawText = await res.text()
-
       let json: any = {}
       try {
         json = rawText ? JSON.parse(rawText) : {}
       } catch {
-        setError(
-          `Server returned unexpected response (HTTP ${res.status}). Please try again or contact support.`
-        )
+        setError(`Server returned unexpected response (HTTP ${res.status}).`)
         setLoading(false)
         return
       }
@@ -315,11 +315,7 @@ function QuestionForm({
 
       onSuccess(json.question)
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? `Network error: ${err.message}`
-          : 'Network error. Please try again.'
-      )
+      setError('Network error. Please try again.')
       setLoading(false)
     }
   }
@@ -398,39 +394,36 @@ function QuestionForm({
 
         <div>
           <label className="block text-xs font-medium mb-1 text-gray-600">
-            💡 Hint (shown during quiz if student clicks &quot;Need a hint?&quot;)
+            💡 Hint
           </label>
           <textarea
             value={hint}
             onChange={(e) => setHint(e.target.value)}
             rows={2}
-            placeholder="e.g. Think about force and acceleration..."
             className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
           />
         </div>
 
         <div>
           <label className="block text-xs font-medium mb-1 text-gray-600">
-            📖 Explanation (shown after submission on results page)
+            📖 Explanation
           </label>
           <textarea
             value={explanation}
             onChange={(e) => setExplanation(e.target.value)}
             rows={2}
-            placeholder="e.g. F = ma is Newton's second law..."
             className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
           />
         </div>
 
         <div>
           <label className="block text-xs font-medium mb-1 text-gray-600">
-            🏷️ Topic Tag (optional)
+            🏷️ Topic Tag
           </label>
           <input
             type="text"
             value={topicTag}
             onChange={(e) => setTopicTag(e.target.value)}
-            placeholder="e.g. Newton's Laws, Kinematics"
             className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
           />
         </div>
@@ -462,4 +455,4 @@ function QuestionForm({
       </button>
     </form>
   )
-        }
+}
