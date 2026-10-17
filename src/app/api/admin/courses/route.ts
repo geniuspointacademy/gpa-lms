@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json()
-  const { title, description, level, price, currency } = body
+  const { title, description, level, price, currency, is_free } = body
 
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     return NextResponse.json({ error: 'Title is required' }, { status: 400 })
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     { auth: { persistSession: false } }
   )
 
-  const { data, error } = await adminClient
+    const { data, error } = await adminClient
     .from('courses')
     .insert({
       title: title.trim(),
@@ -64,6 +64,7 @@ export async function POST(req: Request) {
       level,
       price: Number(price) || 0,
       currency: currency || 'NGN',
+      is_free: is_free || false,
       is_active: true,
     })
     .select()
