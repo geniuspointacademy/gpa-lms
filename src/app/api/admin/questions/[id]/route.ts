@@ -8,64 +8,29 @@ async function verifyAdmin() {
   const userClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
-            })
-          } catch {}
-        },
-      },
-    }
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
   )
 
   const { data: { user } } = await userClient.auth.getUser()
   if (!user) return { error: 'Unauthorized', status: 401 }
 
-  const { data: profile } = await userClient
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
+  const { data: profile } = await userClient.from('users').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') return { error: 'Forbidden', status: 403 }
 
   return { ok: true }
 }
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const check = await verifyAdmin()
-  if ('error' in check) {
-    return NextResponse.json({ error: check.error }, { status: check.status })
-  }
+  if ('error' in check) return NextResponse.json({ error: check.error }, { status: check.status })
 
   const body = await req.json()
   const {
-    text,
-    options,
-    correct_answer,
-    image_url,
-    order_index,
-    points,
-    hint,
-    topic_tag,
-    explanation,
+    text, question_type, options, correct_answer, correct_text,
+    image_url, order_index, points, hint, topic_tag, explanation,
   } = body
 
-  if (!text || !Array.isArray(options) || options.length < 2) {
-    return NextResponse.json(
-      { error: 'Invalid question data' },
-      { status: 400 }
-    )
-  }
+  if (!text) return NextResponse.json({ error: 'Invalid question data' }, { status: 400 })
 
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -77,7 +42,9 @@ export async function PATCH(
     .from('questions')
     .update({
       text: text.trim(),
-      options,
+      question_type: question_type || 'multiple_choice',
+      options: options && options.length > 0 ? options : null,
+      correct_text: correct_text || null,
       image_url: image_url || null,
       order_index: order_index ?? 0,
       points: points ?? 1,
@@ -88,41 +55,26 @@ export async function PATCH(
     .select()
     .single()
 
-  if (qError) {
-    return NextResponse.json({ error: qError.message }, { status: 500 })
-  }
+  if (qError) return NextResponse.json({ error: qError.message }, { status: 500 })
 
   const { error: aError } = await adminClient
     .from('question_answers')
     .upsert({
       question_id: params.id,
-      correct_answer,
+      correct_answer: correct_answer || [],
       explanation: explanation || null,
     })
 
-  if (aError) {
-    return NextResponse.json({ error: aError.message }, { status: 500 })
-  }
+  if (aError) return NextResponse.json({ error: aError.message }, { status: 500 })
 
   return NextResponse.json({
-    question: {
-      ...question,
-      question_answers: {
-        correct_answer,
-        explanation: explanation || null,
-      },
-    },
+    question: { ...question, question_answers: { correct_answer, explanation } },
   })
 }
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   const check = await verifyAdmin()
-  if ('error' in check) {
-    return NextResponse.json({ error: check.error }, { status: check.status })
-  }
+  if ('error' in check) return NextResponse.json({ error: check.error }, { status: check.status })
 
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -130,14 +82,8 @@ export async function DELETE(
     { auth: { persistSession: false } }
   )
 
-  const { error } = await adminClient
-    .from('questions')
-    .delete()
-    .eq('id', params.id)
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+  const { error } = await adminClient.from('questions').delete().eq('id', params.id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({ success: true })
-      }
+}
