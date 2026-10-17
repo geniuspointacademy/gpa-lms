@@ -9,6 +9,7 @@ export default function CourseForm() {
   const [description, setDescription] = useState('')
   const [level, setLevel] = useState(100)
   const [price, setPrice] = useState('0')
+  const [isFree, setIsFree] = useState(false) // 👈 New state
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -26,8 +27,9 @@ export default function CourseForm() {
         title,
         description,
         level,
-        price: Number(price),
+        price: isFree ? 0 : Number(price),
         currency: 'NGN',
+        is_free: isFree,
       }),
     })
 
@@ -44,15 +46,13 @@ export default function CourseForm() {
     setDescription('')
     setLevel(100)
     setPrice('0')
+    setIsFree(false)
     setLoading(false)
     router.refresh()
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-white p-6 rounded-lg border space-y-4"
-    >
+    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg border space-y-4">
       <div>
         <label className="block text-sm font-medium mb-1">Title</label>
         <input
@@ -71,7 +71,6 @@ export default function CourseForm() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          placeholder="What will students learn?"
           className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green"
         />
       </div>
@@ -93,6 +92,24 @@ export default function CourseForm() {
         </div>
 
         <div>
+          <label className="block text-sm font-medium mb-1">Access Type</label>
+          <select
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === 'open') setIsFree(true);
+              else setIsFree(false);
+            }}
+            defaultValue={isFree ? 'open' : 'code'}
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green bg-gray-50"
+          >
+            <option value="code">Requires Code / Payment</option>
+            <option value="open">Free & Open to Public (No Code)</option>
+          </select>
+        </div>
+      </div>
+
+      {!isFree && (
+        <div>
           <label className="block text-sm font-medium mb-1">
             Price (₦) — will be used later for payments
           </label>
@@ -104,19 +121,10 @@ export default function CourseForm() {
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green"
           />
         </div>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded">
-          {error}
-        </div>
       )}
 
-      {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 text-sm p-3 rounded">
-          Course created! It appears in the list below.
-        </div>
-      )}
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded">{error}</div>}
+      {success && <div className="bg-green-50 border border-green-200 text-green-700 text-sm p-3 rounded">Course created!</div>}
 
       <button
         type="submit"
