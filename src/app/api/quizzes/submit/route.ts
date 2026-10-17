@@ -4,16 +4,13 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
-  // 1. Verify user
   const cookieStore = cookies()
   const userClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
+        getAll() { return cookieStore.getAll() },
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
@@ -26,20 +23,12 @@ export async function POST(req: Request) {
   )
 
   const { data: { user } } = await userClient.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // 2. Parse body
   const body = await req.json()
-  const { attempt_id, answers } = body as {
-    attempt_id: string
-    answers: Record<string, string>
-  }
+  const { attempt_id, answers } = body as { attempt_id: string, answers: Record<string, string> }
 
-  if (!attempt_id || !answers) {
-    return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
-  }
+  if (!attempt_id || !answers) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,7 +36,6 @@ export async function POST(req: Request) {
     { auth: { persistSession: false } }
   )
 
-  // 3. Load the attempt + quiz
   const { data: attempt } = await adminClient
     .from('quiz_attempts')
     .select('*, quizzes ( id, title, time_limit_seconds, course_id )')
@@ -55,85 +43,60 @@ export async function POST(req: Request) {
     .eq('user_id', user.id)
     .single()
 
-  if (!attempt) {
-    return NextResponse.json({ error: 'Attempt not found' }, { status: 404 })
-  }
-
-  if (attempt.is_submitted) {
-    return NextResponse.json({ error: 'Already submitted' }, { status: 400 })
-  }
+  if (!attempt) return NextResponse.json({ error: 'Attempt not found' }, { status: 404 })
+  if (attempt.is_submitted) return NextResponse.json({ error: 'Already submitted' }, { status: 400 })
 
   const quiz = attempt.quizzes as any
 
-  // 4. Server-side time enforcement
+  // Time enforcement
   if (quiz.time_limit_seconds) {
-    const elapsed =
-      (Date.now() - new Date(attempt.started_at).getTime()) / 1000
-    const grace = 30 // 30 second grace
-    if (elapsed > quiz.time_limit_seconds + grace) {
-      await adminClient
-        .from('quiz_attempts')
-        .update({
-          is_submitted: true,
-          submitted_at: new Date().toISOString(),
-          score: 0,
-          max_score: 0,
-        })
-        .eq('id', attempt_id)
-
-      return NextResponse.json(
-        { error: 'Time expired' },
-        { status: 410 }
-      )
+    const elapsed = (Date.now() - new Date(attempt.started_at).getTime()) / 1000
+    if (elapsed > quiz.time_limit_seconds + 30) {
+      await adminClient.from('quiz_attempts').update({ is_submitted: true, score: 0, max_score: 0 }).eq('id', attempt_id)
+      return NextResponse.json({ error: 'Time expired' }, { status: 410 })
     }
   }
 
-  // 5. Fetch questions + correct answers
+  // Fetch questions + correct answers + type
   const { data: questions } = await adminClient
     .from('questions')
-    .select('id, points, question_answers ( correct_answer )')
+    .select('id, points, question_type, question_answers ( correct_answer )')
     .eq('quiz_id', quiz.id)
 
-  if (!questions || questions.length === 0) {
-    return NextResponse.json({ error: 'No questions' }, { status: 400 })
-  }
+  if (!questions || questions.length === 0) return NextResponse.json({ error: 'No questions' }, { status: 400 })
 
-  // 6. Grade
+  // Grade
   let score = 0
   let maxScore = 0
 
   for (const q of questions) {
     maxScore += q.points
-    const correct = (q.question_answers as any)?.correct_answer as
-      | string[]
-      | undefined
+    const correct = (q.question_answers as any)?.correct_answer?.[0]
     const given = answers[q.id]
 
-    if (correct && given) {
-      // Simple single-choice comparison
-      if (correct.length === 1 && correct[0] === given) {
-        score += q.points
-      }
+    if (!correct || !given) continue
+
+    if (q.question_type === 'fill_in_gap') {
+      // Case-insensitive, trimmed match for fill-in-the-gap
+      const normalizedCorrect = String(correct).trim().toLowerCase()
+      const normalizedGiven = String(given).trim().toLowerCase()
+      if (normalizedCorrect === normalizedGiven) score += q.points
+    } else {
+      // Exact match for multiple choice
+      if (correct === given) score += q.points
     }
   }
 
-  // 7. Update attempt
- const { error: updateError } = await adminClient
-  .from('quiz_attempts')
-  .update({
+  // Update attempt
+  await adminClient.from('quiz_attempts').update({
     is_submitted: true,
     submitted_at: new Date().toISOString(),
     score,
     max_score: maxScore,
-    answers,
-  })
-  .eq('id', attempt_id)
+    answers, // Save answers for review
+  }).eq('id', attempt_id)
 
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
-  }
-
-  // 8. Upsert student_progress
+  // Upsert student_progress
   const { data: existing } = await adminClient
     .from('student_progress')
     .select('*')
@@ -142,15 +105,12 @@ export async function POST(req: Request) {
     .maybeSingle()
 
   if (existing) {
-    await adminClient
-      .from('student_progress')
-      .update({
-        best_score: Math.max(existing.best_score, score),
-        latest_score: score,
-        attempt_count: existing.attempt_count + 1,
-        last_completed_at: new Date().toISOString(),
-      })
-      .eq('id', existing.id)
+    await adminClient.from('student_progress').update({
+      best_score: Math.max(existing.best_score, score),
+      latest_score: score,
+      attempt_count: existing.attempt_count + 1,
+      last_completed_at: new Date().toISOString(),
+    }).eq('id', existing.id)
   } else {
     await adminClient.from('student_progress').insert({
       user_id: user.id,
@@ -162,9 +122,5 @@ export async function POST(req: Request) {
     })
   }
 
-  return NextResponse.json({
-    score,
-    max_score: maxScore,
-    attempt_id,
-  })
+  return NextResponse.json({ score, max_score: maxScore, attempt_id })
 }
