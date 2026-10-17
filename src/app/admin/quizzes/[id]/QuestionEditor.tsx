@@ -4,15 +4,19 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import ImageUploader from './ImageUploader'
 
+type QuestionType = 'multiple_choice' | 'fill_in_gap'
+
 type Question = {
   id: string
   text: string
-  options: string[]
+  options: string[] | null
   image_url: string | null
   order_index: number
   points: number
   hint: string | null
   topic_tag: string | null
+  question_type: QuestionType
+  correct_text: string | null
   question_answers: {
     correct_answer: string[]
     explanation: string | null
@@ -40,7 +44,6 @@ export default function QuestionEditor({
     }
   }
 
-  // This function handles the instant visual update when a question is saved
   function handleSaveSuccess(savedQuestion: Question) {
     setQuestions((prev) => {
       const exists = prev.find((q) => q.id === savedQuestion.id)
@@ -125,78 +128,46 @@ function QuestionItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="text-xs font-bold text-gray-500">Q{index}</span>
+            <span className="text-xs bg-gray-100 px-2 py-0.5 rounded uppercase">
+              {question.question_type === 'fill_in_gap' ? 'Fill in Gap' : 'Multiple Choice'}
+            </span>
             <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
               {question.points} pt{question.points !== 1 ? 's' : ''}
             </span>
-            {question.topic_tag && (
-              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                {question.topic_tag}
-              </span>
-            )}
           </div>
 
           <p className="font-medium mb-3">{question.text}</p>
 
           {question.image_url && (
-            <img
-              src={question.image_url}
-              alt=""
-              className="max-h-48 rounded border mb-3"
-            />
+            <img src={question.image_url} alt="" className="max-h-48 rounded border mb-3" />
           )}
 
-          <ul className="space-y-1 text-sm">
-            {options.map((opt, i) => {
-              const isCorrect = correct.includes(opt)
-              return (
-                <li
-                  key={i}
-                  className={`flex items-center gap-2 ${
-                    isCorrect ? 'text-green-700 font-medium' : 'text-gray-700'
-                  }`}
-                >
-                  <span className="w-5 h-5 flex items-center justify-center border rounded-full text-xs">
-                    {String.fromCharCode(65 + i)}
-                  </span>
-                  <span>{opt}</span>
-                  {isCorrect && (
-                    <span className="text-xs bg-green-100 px-2 py-0.5 rounded">
-                      Correct
+          {question.question_type === 'fill_in_gap' ? (
+            <div className="text-sm bg-green-50 border border-green-200 p-3 rounded">
+              <span className="font-medium text-green-900">Correct Answer: </span>
+              <span className="text-green-800 font-bold">{question.correct_text}</span>
+            </div>
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {options.map((opt, i) => {
+                const isCorrect = correct.includes(opt)
+                return (
+                  <li key={i} className={`flex items-center gap-2 ${isCorrect ? 'text-green-700 font-medium' : 'text-gray-700'}`}>
+                    <span className="w-5 h-5 flex items-center justify-center border rounded-full text-xs">
+                      {String.fromCharCode(65 + i)}
                     </span>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-
-          {question.hint && (
-            <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded p-2 text-xs">
-              <span className="font-medium text-yellow-900">💡 Hint:</span>{' '}
-              <span className="text-yellow-800">{question.hint}</span>
-            </div>
-          )}
-
-          {explanation && (
-            <div className="mt-2 bg-blue-50 border border-blue-200 rounded p-2 text-xs">
-              <span className="font-medium text-blue-900">Explanation:</span>{' '}
-              <span className="text-blue-800">{explanation}</span>
-            </div>
+                    <span>{opt}</span>
+                    {isCorrect && <span className="text-xs bg-green-100 px-2 py-0.5 rounded">Correct</span>}
+                  </li>
+                )
+              })}
+            </ul>
           )}
         </div>
 
         <div className="flex gap-2 shrink-0 flex-col">
-          <button
-            onClick={onEdit}
-            className="text-sm bg-gpa-navy text-white px-3 py-1 rounded hover:opacity-90"
-          >
-            Edit
-          </button>
-          <button
-            onClick={onDelete}
-            className="text-red-600 hover:text-red-800 text-sm"
-          >
-            Delete
-          </button>
+          <button onClick={onEdit} className="text-sm bg-gpa-navy text-white px-3 py-1 rounded hover:opacity-90">Edit</button>
+          <button onClick={onDelete} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
         </div>
       </div>
     </div>
@@ -218,6 +189,7 @@ function QuestionForm({
 }) {
   const isEdit = !!existing
 
+  const [type, setType] = useState<QuestionType>(existing?.question_type || 'multiple_choice')
   const [text, setText] = useState(existing?.text ?? '')
   const [options, setOptions] = useState<string[]>(() => {
     if (existing?.options?.length) {
@@ -230,18 +202,14 @@ function QuestionForm({
   const [correctIndex, setCorrectIndex] = useState<number>(() => {
     if (!existing) return 0
     const correct = existing.question_answers?.correct_answer?.[0]
-    if (!correct) return 0
     const idx = existing.options?.findIndex((o) => o === correct)
     return idx != null && idx >= 0 ? idx : 0
   })
-  const [imageUrl, setImageUrl] = useState<string | null>(
-    existing?.image_url ?? null
-  )
+  const [correctText, setCorrectText] = useState(existing?.correct_text ?? '')
+  const [imageUrl, setImageUrl] = useState<string | null>(existing?.image_url ?? null)
   const [hint, setHint] = useState(existing?.hint ?? '')
   const [topicTag, setTopicTag] = useState(existing?.topic_tag ?? '')
-  const [explanation, setExplanation] = useState(
-    existing?.question_answers?.explanation ?? ''
-  )
+  const [explanation, setExplanation] = useState(existing?.question_answers?.explanation ?? '')
   const [points, setPoints] = useState(existing?.points ?? 1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -257,26 +225,38 @@ function QuestionForm({
     setLoading(true)
     setError(null)
 
-    const filledOptions = options.filter((o) => o.trim().length > 0)
-    if (filledOptions.length < 2) {
-      setError('At least 2 options are required')
-      setLoading(false)
-      return
-    }
+    let finalOptions: string[] = []
+    let correctAnswer: string[] = []
 
-    const correctAnswer = [options[correctIndex].trim()]
-
-    if (!correctAnswer[0]) {
-      setError('Please fill in the correct answer option')
-      setLoading(false)
-      return
+    if (type === 'multiple_choice') {
+      finalOptions = options.filter((o) => o.trim().length > 0)
+      if (finalOptions.length < 2) {
+        setError('At least 2 options are required')
+        setLoading(false)
+        return
+      }
+      correctAnswer = [options[correctIndex].trim()]
+      if (!correctAnswer[0]) {
+        setError('Please fill in the correct answer option')
+        setLoading(false)
+        return
+      }
+    } else {
+      if (!correctText.trim()) {
+        setError('Correct answer text is required')
+        setLoading(false)
+        return
+      }
+      correctAnswer = [correctText.trim()]
     }
 
     const payload = {
       quiz_id: quizId,
       text,
-      options: filledOptions,
+      question_type: type,
+      options: finalOptions,
       correct_answer: correctAnswer,
+      correct_text: type === 'fill_in_gap' ? correctText.trim() : null,
       image_url: imageUrl,
       order_index: nextOrderIndex,
       points,
@@ -285,9 +265,7 @@ function QuestionForm({
       explanation: explanation.trim() || null,
     }
 
-    const url = isEdit
-      ? `/api/admin/questions/${existing!.id}`
-      : '/api/admin/questions'
+    const url = isEdit ? `/api/admin/questions/${existing!.id}` : '/api/admin/questions'
     const method = isEdit ? 'PATCH' : 'POST'
 
     try {
@@ -296,23 +274,12 @@ function QuestionForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-
-      const rawText = await res.text()
-      let json: any = {}
-      try {
-        json = rawText ? JSON.parse(rawText) : {}
-      } catch {
-        setError(`Server returned unexpected response (HTTP ${res.status}).`)
-        setLoading(false)
-        return
-      }
-
+      const json = await res.json()
       if (!res.ok) {
         setError(json.error || `Request failed (HTTP ${res.status})`)
         setLoading(false)
         return
       }
-
       onSuccess(json.question)
     } catch (err) {
       setError('Network error. Please try again.')
@@ -321,23 +288,26 @@ function QuestionForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-white p-6 rounded-lg border space-y-4 border-gpa-green"
-    >
+    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg border space-y-4 border-gpa-green">
       <div className="flex items-center justify-between">
         <h4 className="font-bold">{isEdit ? 'Edit Question' : 'New Question'}</h4>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-sm text-gray-600 hover:underline"
-        >
-          Cancel
-        </button>
+        <button type="button" onClick={onCancel} className="text-sm text-gray-600 hover:underline">Cancel</button>
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">Question</label>
+        <label className="block text-sm font-medium mb-1">Question Type</label>
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as QuestionType)}
+          className="w-full border rounded px-3 py-2 font-medium bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gpa-green"
+        >
+          <option value="multiple_choice">Multiple Choice (A, B, C, D)</option>
+          <option value="fill_in_gap">Fill in the Gap</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Question Text</label>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -348,109 +318,68 @@ function QuestionForm({
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-2">
-          Options (select the correct one)
-        </label>
-        <div className="space-y-2">
-          {options.map((opt, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="correct"
-                checked={correctIndex === i}
-                onChange={() => setCorrectIndex(i)}
-                className="w-4 h-4"
-              />
-              <span className="w-5 text-sm font-bold">
-                {String.fromCharCode(65 + i)}
-              </span>
-              <input
-                type="text"
-                value={opt}
-                onChange={(e) => updateOption(i, e.target.value)}
-                placeholder={`Option ${String.fromCharCode(65 + i)}`}
-                className="flex-1 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green"
-              />
-            </div>
-          ))}
+      {type === 'multiple_choice' ? (
+        <div>
+          <label className="block text-sm font-medium mb-2">Options (select the correct one)</label>
+          <div className="space-y-2">
+            {options.map((opt, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input type="radio" name="correct" checked={correctIndex === i} onChange={() => setCorrectIndex(i)} className="w-4 h-4" />
+                <span className="w-5 text-sm font-bold">{String.fromCharCode(65 + i)}</span>
+                <input
+                  type="text"
+                  value={opt}
+                  onChange={(e) => updateOption(i, e.target.value)}
+                  placeholder={`Option ${String.fromCharCode(65 + i)}`}
+                  className="flex-1 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green"
+                />
+              </div>
+            ))}
+          </div>
         </div>
-        <p className="text-xs text-gray-500 mt-1">
-          Select the radio button next to the correct answer
-        </p>
-      </div>
+      ) : (
+        <div>
+          <label className="block text-sm font-medium mb-1">Correct Answer</label>
+          <input
+            type="text"
+            value={correctText}
+            onChange={(e) => setCorrectText(e.target.value)}
+            required
+            placeholder="e.g. Newton"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green bg-green-50"
+          />
+          <p className="text-xs text-gray-500 mt-1">Student must type this exactly (case-insensitive)</p>
+        </div>
+      )}
 
       <div>
-        <label className="block text-sm font-medium mb-1">
-          Image (optional)
-        </label>
+        <label className="block text-sm font-medium mb-1">Image (optional)</label>
         <ImageUploader value={imageUrl} onChange={setImageUrl} />
       </div>
 
       <div className="border-t pt-4 space-y-3">
-        <p className="text-sm font-medium text-gpa-navy">
-          Optional learning aids
-        </p>
-
         <div>
-          <label className="block text-xs font-medium mb-1 text-gray-600">
-            💡 Hint
-          </label>
-          <textarea
-            value={hint}
-            onChange={(e) => setHint(e.target.value)}
-            rows={2}
-            className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
-          />
+          <label className="block text-xs font-medium mb-1 text-gray-600">💡 Hint</label>
+          <textarea value={hint} onChange={(e) => setHint(e.target.value)} rows={2} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green" />
         </div>
-
         <div>
-          <label className="block text-xs font-medium mb-1 text-gray-600">
-            📖 Explanation
-          </label>
-          <textarea
-            value={explanation}
-            onChange={(e) => setExplanation(e.target.value)}
-            rows={2}
-            className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
-          />
+          <label className="block text-xs font-medium mb-1 text-gray-600">📖 Explanation</label>
+          <textarea value={explanation} onChange={(e) => setExplanation(e.target.value)} rows={2} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green" />
         </div>
-
         <div>
-          <label className="block text-xs font-medium mb-1 text-gray-600">
-            🏷️ Topic Tag
-          </label>
-          <input
-            type="text"
-            value={topicTag}
-            onChange={(e) => setTopicTag(e.target.value)}
-            className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green"
-          />
+          <label className="block text-xs font-medium mb-1 text-gray-600">🏷️ Topic Tag</label>
+          <input type="text" value={topicTag} onChange={(e) => setTopicTag(e.target.value)} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gpa-green" />
         </div>
       </div>
 
       <div className="w-32">
         <label className="block text-sm font-medium mb-1">Points</label>
-        <input
-          type="number"
-          value={points}
-          onChange={(e) => setPoints(Number(e.target.value) || 1)}
-          min={1}
-          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green"
-        />
+        <input type="number" value={points} onChange={(e) => setPoints(Number(e.target.value) || 1)} min={1} className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green" />
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded">
-          {error}
-        </div>
-      )}
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded">{error}</div>}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="bg-gpa-green text-white px-6 py-2 rounded font-medium hover:opacity-90 disabled:opacity-50"
-      >
+      <button type="submit" disabled={loading} className="bg-gpa-green text-white px-6 py-2 rounded font-medium hover:opacity-90 disabled:opacity-50">
         {loading ? 'Saving...' : isEdit ? 'Update Question' : 'Save Question'}
       </button>
     </form>
