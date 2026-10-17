@@ -5,8 +5,9 @@ import { useState } from 'react'
 type Question = {
   id: string
   text: string
-  options: string[]
+  options: string[] | null
   image_url: string | null
+  question_type: string
   order_index: number
   points: number
   hint: string | null
@@ -21,60 +22,57 @@ type Props = {
   onSelect: (option: string) => void
 }
 
-export default function QuestionCard({
-  question,
-  selected,
-  onSelect,
-}: Props) {
+export default function QuestionCard({ question, selected, onSelect }: Props) {
   const [showHint, setShowHint] = useState(false)
 
   return (
     <div className="bg-white rounded-lg border p-6">
       {question.topic_tag && (
-        <div className="text-xs text-gray-500 mb-3">
-          Topic: {question.topic_tag}
-        </div>
+        <div className="text-xs text-gray-500 mb-3">Topic: {question.topic_tag}</div>
       )}
 
       <p className="text-lg font-medium mb-5">{question.text}</p>
 
       {question.image_url && (
-        <img
-          src={question.image_url}
-          alt="Question"
-          className="max-h-80 rounded border mb-5"
-        />
+        <img src={question.image_url} alt="Question" className="max-h-80 rounded border mb-5" />
       )}
 
-      <ul className="space-y-2">
-        {question.options.map((opt, i) => {
-          const isSelected = selected === opt
-          return (
-            <li key={i}>
-              <button
-                type="button"
-                onClick={() => onSelect(opt)}
-                className={`w-full text-left flex items-center gap-3 p-3 rounded border transition-colors ${
-                  isSelected
-                    ? 'border-gpa-green bg-green-50'
-                    : 'hover:bg-gray-50'
-                }`}
-              >
-                <span
-                  className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold shrink-0 ${
-                    isSelected
-                      ? 'bg-gpa-green text-white'
-                      : 'bg-gray-100 text-gray-700'
+      {question.question_type === 'fill_in_gap' ? (
+        <div className="mb-5">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Your Answer:</label>
+          <input
+            type="text"
+            value={selected || ''}
+            onChange={(e) => onSelect(e.target.value)}
+            placeholder="Type your answer here..."
+            className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-lg focus:outline-none focus:border-gpa-green"
+          />
+        </div>
+      ) : (
+        <ul className="space-y-2 mb-5">
+          {(question.options || []).map((opt, i) => {
+            const isSelected = selected === opt
+            return (
+              <li key={i}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(opt)}
+                  className={`w-full text-left flex items-center gap-3 p-3 rounded border transition-colors ${
+                    isSelected ? 'border-gpa-green bg-green-50' : 'hover:bg-gray-50'
                   }`}
                 >
-                  {String.fromCharCode(65 + i)}
-                </span>
-                <span>{opt}</span>
-              </button>
-            </li>
-          )
-        })}
-      </ul>
+                  <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold shrink-0 ${
+                    isSelected ? 'bg-gpa-green text-white' : 'bg-gray-100 text-gray-700'
+                  }`}>
+                    {String.fromCharCode(65 + i)}
+                  </span>
+                  <span>{opt}</span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
 
       {question.hint && (
         <div className="mt-5">
