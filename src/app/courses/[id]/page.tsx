@@ -100,7 +100,11 @@ export default async function CourseDetailPage({
 
   // Check if current user already has access
   let hasAccess = false
-  if (user) {
+  
+  // 👇 NEW: If the course is free, they automatically have access
+  if (course.is_free === true) {
+    hasAccess = true
+  } else if (user) {
     const { data: access } = await userClient
       .from('user_course_access')
       .select('id')
