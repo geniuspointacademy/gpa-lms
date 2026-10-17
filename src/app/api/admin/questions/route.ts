@@ -21,58 +21,74 @@ async function verifyAdmin() {
 }
 
 export async function POST(req: Request) {
-  const check = await verifyAdmin()
-  if ('error' in check) return NextResponse.json({ error: check.error }, { status: check.status })
+  try {
+    const check = await verifyAdmin()
+    if ('error' in check) return NextResponse.json({ error: check.error }, { status: check.status })
 
-  const body = await req.json()
-  const {
-    quiz_id, text, question_type, options, correct_answer,
-    correct_text, image_url, order_index, points, hint, topic_tag, explanation,
-  } = body
+    const body = await req.json()
+    
+    // Safety check: make sure required fields exist
+    if (!body.quiz_id || !body.text) {
+      return NextResponse.json({ error: 'Missing quiz_id or question text' }, { status: 400 })
+    }
 
-  if (!quiz_id || !text) {
-    return NextResponse.json({ error: 'Invalid question data' }, { status: 400 })
-  }
+    const adminClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    )
 
-  const adminClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  )
+    // 1. Insert the question safely
+    const { data: question, error: qError } = await adminClient
+      .from('questions')
+      .insert({
+        quiz_id: body.quiz_id,
+        text: body.text.trim(),
+        question_type: body.question_type || 'multiple_choice',
+        options: body.options && body.options.length > 0 ? body.options : null,
+        correct_text: body.correct_text || null,
+        image_url: body.image_url || null,
+        order_index: body.order_index ?? 0,
+        points: body.points ?? 1,
+        hint: body.hint || null,
+        topic_tag: body.topic_tag || null,
+      })
+      .select()
+      .single()
 
-  const { data: question, error: qError } = await adminClient
-    .from('questions')
-    .insert({
-      quiz_id,
-      text: text.trim(),
-      question_type: question_type || 'multiple_choice',
-      options: options && options.length > 0 ? options : null,
-      correct_text: correct_text || null,
-      image_url: image_url || null,
-      order_index: order_index ?? 0,
-      points: points ?? 1,
-      hint: hint || null,
-      topic_tag: topic_tag || null,
+    if (qError) {
+      console.error('Question insert error:', qError)
+      return NextResponse.json({ error: qError.message }, { status: 500 })
+    }
+
+    // 2. Insert the answer safely
+    const { error: aError } = await adminClient
+      .from('question_answers')
+      .insert({
+        question_id: question.id,
+        correct_answer: body.correct_answer || [],
+        explanation: body.explanation || null,
+      })
+
+    if (aError) {
+      console.error('Answer insert error:', aError)
+      // Rollback if answer fails
+      await adminClient.from('questions').delete().eq('id', question.id)
+      return NextResponse.json({ error: aError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      question: { 
+        ...question, 
+        question_answers: { 
+          correct_answer: body.correct_answer || [], 
+          explanation: body.explanation || null 
+        } 
+      },
     })
-    .select()
-    .single()
 
-  if (qError) return NextResponse.json({ error: qError.message }, { status: 500 })
-
-  const { error: aError } = await adminClient
-    .from('question_answers')
-    .insert({
-      question_id: question.id,
-      correct_answer: correct_answer || [],
-      explanation: explanation || null,
-    })
-
-  if (aError) {
-    await adminClient.from('questions').delete().eq('id', question.id)
-    return NextResponse.json({ error: aError.message }, { status: 500 })
+  } catch (err: any) {
+    console.error('Unhandled API Error:', err)
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 })
   }
-
-  return NextResponse.json({
-    question: { ...question, question_answers: { correct_answer, explanation } },
-  })
 }
