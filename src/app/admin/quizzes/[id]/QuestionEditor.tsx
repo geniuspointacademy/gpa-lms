@@ -150,9 +150,11 @@ function QuestionItem({
             </div>
           ) : (
             <ul className="space-y-1 text-sm">
-              {options.map((opt, i) => {
-                // ✅ Check if this option is in the correctAnswers array
-                const isCorrect = correctAnswers.includes(opt)
+                          {options.map((opt, i) => {
+                // ✅ Trim both sides to ignore accidental spaces when checking for the correct badge
+                const isCorrect = correctAnswers.some(
+                  (ans) => ans.trim() === opt.trim()
+                )
                 return (
                   <li key={i} className={`flex items-center gap-2 ${isCorrect ? 'text-green-700 font-medium' : 'text-gray-700'}`}>
                     <span className="w-5 h-5 flex items-center justify-center border rounded-full text-xs">
