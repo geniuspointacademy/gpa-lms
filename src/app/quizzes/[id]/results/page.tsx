@@ -199,7 +199,7 @@ export default async function ResultsPage({
                   )}
                 </div>
 
-                <p className="font-medium mb-3">{q.text}</p>
+                <p className="font-medium mb-3 whitespace-pre-wrap">{q.text}</p>
 
                 {q.image_url && (
                   <img
