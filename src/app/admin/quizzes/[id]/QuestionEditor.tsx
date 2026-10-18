@@ -118,7 +118,8 @@ function QuestionItem({
   onEdit: () => void
   onDelete: () => void
 }) {
-  const correct = question.question_answers?.correct_answer || []
+  // ✅ THE FIX IS HERE: Extract the correct answer array safely
+  const correctAnswers = question.question_answers?.correct_answer || []
   const explanation = question.question_answers?.explanation || null
   const options = question.options || []
 
@@ -150,18 +151,27 @@ function QuestionItem({
           ) : (
             <ul className="space-y-1 text-sm">
               {options.map((opt, i) => {
-                const isCorrect = correct.includes(opt)
+                // ✅ Check if this option is in the correctAnswers array
+                const isCorrect = correctAnswers.includes(opt)
                 return (
                   <li key={i} className={`flex items-center gap-2 ${isCorrect ? 'text-green-700 font-medium' : 'text-gray-700'}`}>
                     <span className="w-5 h-5 flex items-center justify-center border rounded-full text-xs">
                       {String.fromCharCode(65 + i)}
                     </span>
                     <span>{opt}</span>
-                    {isCorrect && <span className="text-xs bg-green-100 px-2 py-0.5 rounded">Correct</span>}
+                    {/* ✅ Show the green badge */}
+                    {isCorrect && <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">Correct</span>}
                   </li>
                 )
               })}
             </ul>
+          )}
+
+          {explanation && (
+            <div className="mt-3 bg-blue-50 border border-blue-200 rounded p-2 text-xs">
+              <span className="font-medium text-blue-900">Explanation:</span>{' '}
+              <span className="text-blue-800">{explanation}</span>
+            </div>
           )}
         </div>
 
@@ -188,7 +198,6 @@ function QuestionForm({
   onCancel: () => void
 }) {
   const isEdit = !!existing
-
   const [type, setType] = useState<QuestionType>(existing?.question_type || 'multiple_choice')
   const [text, setText] = useState(existing?.text ?? '')
   const [options, setOptions] = useState<string[]>(() => {
@@ -230,23 +239,11 @@ function QuestionForm({
 
     if (type === 'multiple_choice') {
       finalOptions = options.filter((o) => o.trim().length > 0)
-      if (finalOptions.length < 2) {
-        setError('At least 2 options are required')
-        setLoading(false)
-        return
-      }
+      if (finalOptions.length < 2) return setError('At least 2 options are required'), setLoading(false)
       correctAnswer = [options[correctIndex].trim()]
-      if (!correctAnswer[0]) {
-        setError('Please fill in the correct answer option')
-        setLoading(false)
-        return
-      }
+      if (!correctAnswer[0]) return setError('Please fill in the correct answer option'), setLoading(false)
     } else {
-      if (!correctText.trim()) {
-        setError('Correct answer text is required')
-        setLoading(false)
-        return
-      }
+      if (!correctText.trim()) return setError('Correct answer text is required'), setLoading(false)
       correctAnswer = [correctText.trim()]
     }
 
@@ -296,11 +293,7 @@ function QuestionForm({
 
       <div>
         <label className="block text-sm font-medium mb-1">Question Type</label>
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value as QuestionType)}
-          className="w-full border rounded px-3 py-2 font-medium bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gpa-green"
-        >
+        <select value={type} onChange={(e) => setType(e.target.value as QuestionType)} className="w-full border rounded px-3 py-2 font-medium bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gpa-green">
           <option value="multiple_choice">Multiple Choice (A, B, C, D)</option>
           <option value="fill_in_gap">Fill in the Gap</option>
         </select>
@@ -308,14 +301,7 @@ function QuestionForm({
 
       <div>
         <label className="block text-sm font-medium mb-1">Question Text</label>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          required
-          rows={2}
-          placeholder="Type the question here..."
-          className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green"
-        />
+        <textarea value={text} onChange={(e) => setText(e.target.value)} required rows={2} className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green" />
       </div>
 
       {type === 'multiple_choice' ? (
@@ -326,13 +312,7 @@ function QuestionForm({
               <div key={i} className="flex items-center gap-2">
                 <input type="radio" name="correct" checked={correctIndex === i} onChange={() => setCorrectIndex(i)} className="w-4 h-4" />
                 <span className="w-5 text-sm font-bold">{String.fromCharCode(65 + i)}</span>
-                <input
-                  type="text"
-                  value={opt}
-                  onChange={(e) => updateOption(i, e.target.value)}
-                  placeholder={`Option ${String.fromCharCode(65 + i)}`}
-                  className="flex-1 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green"
-                />
+                <input type="text" value={opt} onChange={(e) => updateOption(i, e.target.value)} className="flex-1 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green" />
               </div>
             ))}
           </div>
@@ -340,15 +320,7 @@ function QuestionForm({
       ) : (
         <div>
           <label className="block text-sm font-medium mb-1">Correct Answer</label>
-          <input
-            type="text"
-            value={correctText}
-            onChange={(e) => setCorrectText(e.target.value)}
-            required
-            placeholder="e.g. Newton"
-            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gpa-green bg-green-50"
-          />
-          <p className="text-xs text-gray-500 mt-1">Student must type this exactly (case-insensitive)</p>
+          <input type="text" value={correctText} onChange={(e) => setCorrectText(e.target.value)} required className="w-full border rounded px-3 py-2 bg-green-50 focus:outline-none focus:ring-2 focus:ring-gpa-green" />
         </div>
       )}
 
