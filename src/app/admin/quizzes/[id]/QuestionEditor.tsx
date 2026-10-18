@@ -137,7 +137,7 @@ function QuestionItem({
             </span>
           </div>
 
-          <p className="font-medium mb-3">{question.text}</p>
+          <p className="font-medium mb-3 whitespace-pre-wrap">{question.text}</p>
 
           {question.image_url && (
             <img src={question.image_url} alt="" className="max-h-48 rounded border mb-3" />
