@@ -46,14 +46,22 @@ export default async function LearnPage({
   }
 
   // Check access
-  const { data: access } = await supabase
-    .from('user_course_access')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('course_id', params.id)
-    .maybeSingle()
+  let hasAccess = false
 
-  if (!access) {
+  // 👇 NEW: If the course is free, grant access automatically
+  if (course.is_free === true) {
+    hasAccess = true
+  } else {
+    const { data: access } = await supabase
+      .from('user_course_access')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('course_id', params.id)
+      .maybeSingle()
+    hasAccess = !!access
+  }
+
+  if (!hasAccess) {
     redirect(`/courses/${params.id}`)
   }
 
