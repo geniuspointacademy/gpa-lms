@@ -248,7 +248,7 @@ export default async function ResultsPage({
                     <p className="font-medium text-blue-900 mb-1">
                       💡 Explanation
                     </p>
-                    <p className="text-blue-800">{explanation}</p>
+                    <p className="text-blue-800 whitespace-pre-wrap">{explanation}</p>
                   </div>
                 )}
               </div>
