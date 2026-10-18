@@ -209,10 +209,11 @@ export default async function ResultsPage({
                   />
                 )}
 
-                <ul className="space-y-1 text-sm">
+                               <ul className="space-y-1 text-sm">
                   {(q.options ?? []).map((opt: string, j: number) => {
-                    const isCorrectOpt = opt === correctAnswer
-                    const isUserChoice = opt === userAnswer
+                    // 🛠️ FIX: Trim both sides to prevent accidental space mismatches
+                    const isCorrectOpt = correctAnswer ? opt.trim() === correctAnswer.trim() : false
+                    const isUserChoice = userAnswer ? opt.trim() === userAnswer.trim() : false
                     return (
                       <li
                         key={j}
