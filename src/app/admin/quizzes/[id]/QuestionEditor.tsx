@@ -171,8 +171,8 @@ function QuestionItem({
 
           {explanation && (
             <div className="mt-3 bg-blue-50 border border-blue-200 rounded p-2 text-xs">
-              <span className="font-medium text-blue-900">Explanation:</span>{' '}
-              <span className="text-blue-800">{explanation}</span>
+              <div className="font-medium text-blue-900">Explanation:</span>{' '}
+              <div className="text-blue-800 whitespace-pre-wrap">{explanation}</span>
             </div>
           )}
         </div>
