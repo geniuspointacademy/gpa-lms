@@ -31,7 +31,7 @@ export default function QuestionCard({ question, selected, onSelect }: Props) {
         <div className="text-xs text-gray-500 mb-3">Topic: {question.topic_tag}</div>
       )}
 
-      <p className="text-lg font-medium mb-5">{question.text}</p>
+      <p className="text-lg font-medium mb-5 whitespace-pre-wrap">{question.text}</p>
 
       {question.image_url && (
         <img src={question.image_url} alt="Question" className="max-h-80 rounded border mb-5" />
