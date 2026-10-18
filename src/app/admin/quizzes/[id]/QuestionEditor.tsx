@@ -118,7 +118,6 @@ function QuestionItem({
   onEdit: () => void
   onDelete: () => void
 }) {
-  // ✅ THE FIX IS HERE: Extract the correct answer array safely
   const correctAnswers = question.question_answers?.correct_answer || []
   const explanation = question.question_answers?.explanation || null
   const options = question.options || []
@@ -150,8 +149,8 @@ function QuestionItem({
             </div>
           ) : (
             <ul className="space-y-1 text-sm">
-                          {options.map((opt, i) => {
-                // ✅ Trim both sides to ignore accidental spaces when checking for the correct badge
+              {options.map((opt, i) => {
+                // Check if this option is in the correctAnswers array (ignoring spaces)
                 const isCorrect = correctAnswers.some(
                   (ans) => ans.trim() === opt.trim()
                 )
@@ -161,7 +160,6 @@ function QuestionItem({
                       {String.fromCharCode(65 + i)}
                     </span>
                     <span>{opt}</span>
-                    {/* ✅ Show the green badge */}
                     {isCorrect && <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">Correct</span>}
                   </li>
                 )
@@ -171,8 +169,8 @@ function QuestionItem({
 
           {explanation && (
             <div className="mt-3 bg-blue-50 border border-blue-200 rounded p-2 text-xs">
-              <div className="font-medium text-blue-900">Explanation:</span>{' '}
-              <div className="text-blue-800 whitespace-pre-wrap">{explanation}</span>
+              <div className="font-medium text-blue-900 mb-1">Explanation:</div>
+              <div className="text-blue-800 whitespace-pre-wrap">{explanation}</div>
             </div>
           )}
         </div>
