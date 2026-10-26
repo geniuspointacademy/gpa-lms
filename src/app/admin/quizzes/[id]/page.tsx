@@ -33,7 +33,6 @@ export default async function QuizEditPage({
     }
   )
 
-  // Fetch quiz
   const { data: quiz } = await userClient
     .from('quizzes')
     .select('*, courses ( id, title )')
@@ -44,18 +43,19 @@ export default async function QuizEditPage({
     notFound()
   }
 
-  // Fetch questions with their answers (service role to bypass RLS on question_answers)
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } }
   )
 
+  // Fetch questions AND explanations
   const { data: questions } = await adminClient
     .from('questions')
-    .select('*, question_answers ( correct_answer )')
+    .select('*, question_answers ( correct_answer, explanation )')
     .eq('quiz_id', params.id)
     .order('order_index', { ascending: true })
+    .limit(500)
 
   return (
     <div className="space-y-8">
