@@ -136,6 +136,7 @@ function QuestionItem({
             </span>
           </div>
 
+          {/* 👇 whitespace-pre-wrap allows paragraphs in the question text */}
           <p className="font-medium mb-3 whitespace-pre-wrap">{question.text}</p>
 
           {question.image_url && (
@@ -150,7 +151,6 @@ function QuestionItem({
           ) : (
             <ul className="space-y-1 text-sm">
               {options.map((opt, i) => {
-                // Check if this option is in the correctAnswers array (ignoring spaces)
                 const isCorrect = correctAnswers.some(
                   (ans) => ans.trim() === opt.trim()
                 )
@@ -167,6 +167,7 @@ function QuestionItem({
             </ul>
           )}
 
+          {/* 👇 THIS IS THE BLOCK THAT SHOWS THE EXPLANATION IN ADMIN */}
           {explanation && (
             <div className="mt-3 bg-blue-50 border border-blue-200 rounded p-2 text-xs">
               <div className="font-medium text-blue-900 mb-1">Explanation:</div>
